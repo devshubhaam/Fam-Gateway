@@ -202,6 +202,10 @@ def register():
         except DuplicateKeyError:
             flash("That email is already registered.", "error")
             return render_template("auth.html", mode="register"), 409
+        except Exception as exc:  # noqa: BLE001 - show the reason on screen instead of a blank 500
+            log.exception("register failed")
+            flash("Server error: %s: %s" % (type(exc).__name__, str(exc)[:200]), "error")
+            return render_template("auth.html", mode="register"), 500
         session.clear()
         session["mid"] = merchant["_id"]
         session["new_api_key"] = api_key
@@ -276,6 +280,13 @@ def google_callback():
         }, timeout=10)
         if not getattr(tok, "ok", True):
             log.error("google token endpoint said %s: %s", tok.status_code, tok.text[:300])
+            try:
+                body = tok.json()
+                why = "%s - %s" % (body.get("error", "?"), body.get("error_description", ""))
+            except ValueError:
+                why = "HTTP %s" % tok.status_code
+            flash("Google said: " + why, "error")
+            return redirect(url_for("login"))
         tok.raise_for_status()
         info = requests.get(GOOGLE_USERINFO_URL, timeout=10,
                             headers={"Authorization": "Bearer " + tok.json()["access_token"]})
