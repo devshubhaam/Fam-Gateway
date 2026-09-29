@@ -274,6 +274,8 @@ def google_callback():
             "redirect_uri": base_url() + url_for("google_callback"),
             "grant_type": "authorization_code",
         }, timeout=10)
+        if not getattr(tok, "ok", True):
+            log.error("google token endpoint said %s: %s", tok.status_code, tok.text[:300])
         tok.raise_for_status()
         info = requests.get(GOOGLE_USERINFO_URL, timeout=10,
                             headers={"Authorization": "Bearer " + tok.json()["access_token"]})
