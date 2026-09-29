@@ -72,6 +72,7 @@ def ensure_indexes(db, report=None):
     ))
     # A bank UTR can settle at most one payment per merchant (idempotency).
     step("payments.utr", lambda: db.payments.create_index([("merchant_id", 1), ("utr", 1)], unique=True))
+    step("deliveries.merchant", lambda: db.deliveries.create_index([("merchant_id", 1), ("created_at", -1)]))
     step("deliveries.status", lambda: db.deliveries.create_index([("status", 1), ("next_attempt", 1)]))
     step("email_log.message", lambda: db.email_log.create_index([("merchant_id", 1), ("message_id", 1)]))
     step("email_log.ttl", lambda: db.email_log.create_index("created_at", expireAfterSeconds=7 * 86400))
