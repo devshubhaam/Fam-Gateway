@@ -308,6 +308,27 @@ def google_callback():
     return redirect(url_for("dashboard"))
 
 
+@app.get("/dbcheck")
+def dbcheck():
+    """Diagnostic: tells you in plain text whether MongoDB is reachable and how long it took."""
+    import db as dbmod
+    lines = [
+        "MONGODB_URI set: %s" % bool(os.environ.get("MONGODB_URI")),
+        "SECRET_KEY set: %s" % bool(os.environ.get("SECRET_KEY")),
+        "GOOGLE keys set: %s" % google_enabled(),
+        "app DB handle ready: %s" % (dbmod._db is not None),
+    ]
+    t = time.time()
+    try:
+        from pymongo import MongoClient
+        c = MongoClient(os.environ["MONGODB_URI"], serverSelectionTimeoutMS=6000, tz_aware=True)
+        c.admin.command("ping")
+        lines.append("PING: OK in %.1fs" % (time.time() - t))
+    except Exception as exc:  # noqa: BLE001
+        lines.append("PING FAILED after %.1fs: %s: %s" % (time.time() - t, type(exc).__name__, str(exc)[:300]))
+    return Response("\n".join(lines), mimetype="text/plain")
+
+
 @app.get("/logout")
 def logout():
     session.clear()
