@@ -14,41 +14,7 @@
 </head>
 <body>
 <div class="dashboard-layout">
-  <div class="mobile-header">
-    <a class="dash-brand" href="{{ url_for('dashboard') }}"><span class="logo-mark">&#8377;</span>{{ brand }}</a>
-    <button class="mobile-menu-btn" id="openSidebarBtn" aria-label="Menu"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
-  </div>
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <a class="dash-brand" href="{{ url_for('dashboard') }}"><span class="logo-mark">&#8377;</span>{{ brand }}</a>
-        <button class="mobile-menu-btn" id="closeSidebarBtn" style="display:none" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-      </div>
-    </div>
-    <nav class="sidebar-nav">
-      <div class="sidebar-section-label">Main</div>
-      <a href="#top" class="sidebar-item active"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> Dashboard</a>
-      <a href="#orders" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg> Orders</a>
-      <a href="#payments" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg> Payments</a>
-      <a href="#emails" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Emails</a>
-      <div class="sidebar-section-label">Settings</div>
-      <a href="#settings" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Payment settings</a>
-      <a href="#mailbox" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Mailbox</a>
-      <a href="#keys" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3"/></svg> API &amp; webhooks</a>
-      <a href="#test" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Test order</a>
-      <a href="{{ url_for('docs') }}" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Documentation</a>
-    </nav>
-    <div class="sidebar-footer">
-      <div class="sidebar-user-card">
-        <div style="overflow:hidden;min-width:0">
-          <div class="sidebar-user-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Merchant</div>
-          <div class="sidebar-user-role" style="overflow:hidden;text-overflow:ellipsis">{{ m.email }}</div>
-        </div>
-      </div>
-      <a href="{{ url_for('logout') }}" class="sidebar-logout"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg> Sign Out</a>
-    </div>
-  </aside>
-  <div class="sidebar-overlay" id="sidebarOverlay" style="display:none"></div>
+  {% set active = 'dashboard' %}{% include "_sidebar.html" %}
   <main class="main-content">
     <div class="wrap" id="top">
       <div class="page-title-row" style="margin-bottom:24px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px">
