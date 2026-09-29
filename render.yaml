@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: upibridge
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # ONE worker: the background poller + webhook sender run inside this process.
+    startCommand: gunicorn app:app --workers 1 --threads 8 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: BRAND_NAME
+        value: UPIBridge
+      - key: BASE_URL
+        sync: false
+      - key: ALLOW_REGISTRATION
+        value: "1"
