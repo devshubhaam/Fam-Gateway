@@ -38,6 +38,7 @@ app.config.update(
 )
 if os.environ.get("MONGODB_URI") and not os.environ.get("SECRET_KEY"):
     raise RuntimeError("SECRET_KEY must be set in production")
+BOOT_TIME = time.time()
 BRAND = os.environ.get("BRAND_NAME", "UPIBridge")
 POLL_SECONDS = int(os.environ.get("POLL_SECONDS", "15"))
 UPI_ID_RE = re.compile(r"^[A-Za-z0-9._\-]{2,64}@[A-Za-z][A-Za-z0-9]{1,30}$")
@@ -99,8 +100,16 @@ def csrf_protect():
             abort(400, "Invalid or missing CSRF token. Reload the page and try again.")
 
 
+@app.before_request
+def _t0():
+    g._t0 = time.time()
+
+
 @app.after_request
 def headers(resp):
+    took = time.time() - getattr(g, "_t0", time.time())
+    if took > 1.0:
+        log.warning("SLOW %s %s took %.1fs", request.method, request.path, took)
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("Referrer-Policy", "same-origin")
     if request.path.startswith(("/dashboard", "/login", "/register")):
@@ -344,12 +353,19 @@ def dbcheck():
         "GOOGLE keys set: %s" % google_enabled(),
         "app DB handle ready: %s" % (dbmod._db is not None),
     ]
-    t = time.time()
-    try:
-        dbmod.open_db(lines)
-        lines.append("DB + INDEXES: OK in %.1fs" % (time.time() - t))
-    except Exception as exc:  # noqa: BLE001
-        lines.append("FAILED after %.1fs: %s: %s" % (time.time() - t, type(exc).__name__, str(exc)[:300]))
+    def timed(label, fn):
+        t0 = time.time()
+        try:
+            fn()
+            lines.append("%s: %.2fs" % (label, time.time() - t0))
+        except Exception as exc:  # noqa: BLE001
+            lines.append("%s FAILED after %.2fs: %s: %s" % (label, time.time() - t0, type(exc).__name__, str(exc)[:200]))
+
+    timed("connect (get_db)", get_db)
+    for n in (1, 2, 3):
+        timed("db read #%d" % n, lambda: get_db().merchants.find_one({"email": "nobody@example.invalid"}))
+    timed("password hash", lambda: generate_password_hash("timing-test-123"))
+    lines.append("server uptime: %.0fs, threads: %d" % (time.time() - BOOT_TIME, threading.active_count()))
     return Response("\n".join(lines), mimetype="text/plain")
 
 
