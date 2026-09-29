@@ -65,6 +65,67 @@ def base_url() -> str:
     return os.environ.get("BASE_URL", request.url_root).rstrip("/")
 
 
+# ---------------------------------------------------------------- email (Brevo templates)
+try:
+    from famway_mailer import famway_mail_async
+except ImportError:  # mailer file missing: the app still runs, just without emails
+    def famway_mail_async(*_args, **_kwargs):
+        return None
+
+
+def send_mail(event: str, email: str, name: str = "", **params) -> None:
+    """Fire-and-forget email. A mail problem must never break signup/login/settings."""
+    try:
+        famway_mail_async(event, email, name, params)
+    except Exception:  # noqa: BLE001
+        log.exception("mail %s could not be queued", event)
+
+
+def _now_ist() -> str:
+    return fmt_ist_long(services.utcnow()) + " IST"
+
+
+def _device() -> str:
+    ua = request.headers.get("User-Agent", "")
+    os_name = next((n for k, n in (("Android", "Android"), ("iPhone", "iPhone"), ("iPad", "iPad"),
+                                   ("Windows", "Windows"), ("Mac OS", "Mac"), ("Linux", "Linux")) if k in ua),
+                   "Unknown device")
+    browser = next((n for k, n in (("Edg/", "Edge"), ("OPR/", "Opera"), ("Firefox", "Firefox"),
+                                   ("Chrome", "Chrome"), ("Safari", "Safari")) if k in ua), "Browser")
+    return f"{browser} on {os_name}"
+
+
+def _dash_url() -> str:
+    return base_url() + url_for("dashboard")
+
+
+def _mask_key(key: str) -> str:
+    return f"{key[:12]}...{key[-4:]}"
+
+
+def _login_alert(merchant: dict) -> None:
+    """Email a 'new login' alert when the sign-in comes from an IP we have not seen before."""
+    ip = request.remote_addr or ""
+    if not ip:
+        return
+    known = merchant.get("known_ips") or []
+    if ip in known:
+        return
+    get_db().merchants.update_one(
+        {"_id": merchant["_id"]},
+        {"$push": {"known_ips": {"$each": [ip], "$slice": -10}}})
+    if known:  # first ever login is not an alert
+        send_mail("login_alert", merchant["email"], display_name(merchant),
+                  device=_device(), location="IP " + ip, ip_address=ip, time=_now_ist(),
+                  secure_url=base_url() + url_for("profile", tab="security"))
+
+
+def _notify_new_key(m: dict, key: str) -> None:
+    send_mail("api_key_created", m["email"], display_name(m),
+              api_key_masked=_mask_key(key), key_name="Primary key", time=_now_ist(),
+              ip_address=request.remote_addr or "Unknown", keys_url=base_url() + url_for("api_keys"))
+
+
 def current_merchant():
     if "merchant" not in g:
         mid = session.get("mid")
@@ -223,6 +284,8 @@ def register():
         session.clear()
         session["mid"] = merchant["_id"]
         session["new_api_key"] = api_key
+        send_mail("welcome", email, display_name(merchant),
+                  dashboard_url=_dash_url(), docs_url=base_url() + url_for("docs"))
         return redirect(url_for("dashboard"))
     return render_template("auth.html", mode="register")
 
@@ -251,6 +314,7 @@ def login():
         if merchant and merchant.get("password_hash") and check_password_hash(merchant["password_hash"], request.form.get("password", "")):
             session.clear()
             session["mid"] = merchant["_id"]
+            _login_alert(merchant)
             return redirect(url_for("dashboard"))
         flash("Wrong email or password.", "error")
         return render_template("auth.html", mode="login"), 401
@@ -345,6 +409,7 @@ def google_callback():
             return redirect(url_for("login"))
         session.clear()
         session["mid"] = merchant["_id"]
+        _login_alert(merchant)
         return redirect(url_for("dashboard"))
     if os.environ.get("ALLOW_REGISTRATION", "1") != "1":
         flash("New sign-ups are closed.", "error")
@@ -357,6 +422,8 @@ def google_callback():
     session["mid"] = merchant["_id"]
     if api_key:
         session["new_api_key"] = api_key
+        send_mail("welcome", merchant["email"], display_name(merchant),
+                  dashboard_url=_dash_url(), docs_url=base_url() + url_for("docs"))
     return redirect(url_for("dashboard"))
 
 
@@ -512,6 +579,7 @@ def regenerate_key():
         "api_key_hash": security.hash_api_key(key), "api_key_prefix": key[:12],
         "api_key_enc": security.encrypt(key)}})
     session["new_api_key"] = key
+    _notify_new_key(m, key)
     return redirect(url_for("dashboard"))
 
 
@@ -749,6 +817,7 @@ def regenerate_api_key():
         "api_key_hash": security.hash_api_key(key), "api_key_prefix": key[:12],
         "api_key_enc": security.encrypt(key)}})
     flash("New API key generated. The old key has stopped working.", "ok")
+    _notify_new_key(m, key)
     return redirect(url_for("api_keys"))
 
 
@@ -989,6 +1058,8 @@ def profile_email():
         try:
             get_db().merchants.update_one({"_id": m["_id"]}, {"$set": {"email": new}})
             flash("Email changed to %s." % new, "ok")
+            send_mail("email_changed", m["email"], display_name(m), old_email=m["email"], new_email=new,
+                      time=_now_ist(), secure_url=base_url() + url_for("profile", tab="security"))
         except DuplicateKeyError:
             flash("That email is already registered.", "error")
     return redirect(url_for("profile", tab="general"))
@@ -1039,6 +1110,9 @@ def profile_password():
     else:
         get_db().merchants.update_one({"_id": m["_id"]}, {"$set": {"password_hash": generate_password_hash(new)}})
         flash("Password updated.", "ok")
+        send_mail("password_changed", m["email"], display_name(m), time=_now_ist(), device=_device(),
+                  location="IP " + (request.remote_addr or "Unknown"),
+                  secure_url=base_url() + url_for("profile", tab="security"))
     return redirect(url_for("profile", tab="security"))
 
 
