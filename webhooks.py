@@ -32,6 +32,7 @@ def attempt_delivery(db, delivery: dict):
     merchant = db.merchants.find_one({"_id": delivery["merchant_id"]})
     attempts = delivery["attempts"] + 1
     ok, error = False, ""
+    status_code, resp_text = None, None
     if merchant is None or not merchant.get("webhook_secret_enc"):
         error = "merchant or webhook secret missing"
     else:
@@ -48,12 +49,16 @@ def attempt_delivery(db, delivery: dict):
                     headers={"Content-Type": "application/json", "X-Timestamp": ts,
                              "X-Signature": "sha256=" + sign_webhook(secret, ts, body),
                              "User-Agent": "upibridge-webhook/1.0"})
+                status_code = resp.status_code
+                text = getattr(resp, "text", "")
+                resp_text = text[:500] if isinstance(text, str) else ""
                 ok = 200 <= resp.status_code < 300
                 error = "" if ok else f"HTTP {resp.status_code}"
             except requests.RequestException as exc:
                 error = str(exc)[:150]
 
-    update = {"attempts": attempts, "last_error": error or None, "last_attempt_at": utcnow()}
+    update = {"attempts": attempts, "last_error": error or None, "last_attempt_at": utcnow(),
+              "last_status": status_code, "last_response": resp_text}
     if ok:
         update["status"] = "done"
     elif attempts >= len(BACKOFF_SECONDS):
