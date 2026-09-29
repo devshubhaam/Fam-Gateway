@@ -320,12 +320,10 @@ def dbcheck():
     ]
     t = time.time()
     try:
-        from pymongo import MongoClient
-        c = MongoClient(os.environ["MONGODB_URI"], serverSelectionTimeoutMS=6000, tz_aware=True)
-        c.admin.command("ping")
-        lines.append("PING: OK in %.1fs" % (time.time() - t))
+        dbmod.open_db(lines)
+        lines.append("DB + INDEXES: OK in %.1fs" % (time.time() - t))
     except Exception as exc:  # noqa: BLE001
-        lines.append("PING FAILED after %.1fs: %s: %s" % (time.time() - t, type(exc).__name__, str(exc)[:300]))
+        lines.append("FAILED after %.1fs: %s: %s" % (time.time() - t, type(exc).__name__, str(exc)[:300]))
     return Response("\n".join(lines), mimetype="text/plain")
 
 
