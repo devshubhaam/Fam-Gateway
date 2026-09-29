@@ -7,7 +7,7 @@ import threading
 import time
 from urllib.parse import urlencode
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 
@@ -386,13 +386,31 @@ def dashboard():
     emails = list(db.email_log.find({"merchant_id": m["_id"]}).sort("created_at", -1).limit(12))
     failed = db.deliveries.count_documents({"merchant_id": m["_id"], "status": "failed"})
     stats = {"total": 0, "paid": 0, "other": 0, "revenue_paise": 0}
+    today = services.utcnow().date()
+    days = {today - timedelta(days=i): {"orders": 0, "revenue": 0.0} for i in range(29, -1, -1)}
     for o in db.orders.find({"merchant_id": m["_id"]}).limit(5000):
         stats["total"] += 1
+        d = o["created_at"].date()
+        if d in days:
+            days[d]["orders"] += 1
         if effective_status(o) == "paid":
             stats["paid"] += 1
             stats["revenue_paise"] += int(o.get("payable_paise") or 0)
+            pd = (o.get("paid_at") or o["created_at"]).date()
+            if pd in days:
+                days[pd]["revenue"] += int(o.get("payable_paise") or 0) / 100
         else:
             stats["other"] += 1
+    chart = [{"d": d.strftime("%d %b"), "orders": v["orders"], "revenue": round(v["revenue"], 2)} for d, v in days.items()]
+    hour = (services.utcnow() + timedelta(hours=5, minutes=30)).hour
+    greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 17 else "Good evening"
+    display_name = (m.get("payee_name") or m["email"].split("@")[0]).strip()
+    setup = {
+        "upi": bool(m.get("upi_id")),
+        "mail": bool(m["imap"].get("enabled") and m["imap"].get("user")),
+        "hook": bool(m.get("webhook_url")),
+        "order": stats["total"] > 0,
+    }
     try:
         webhook_secret = security.decrypt(m["webhook_secret_enc"])
     except ValueError:
@@ -400,6 +418,7 @@ def dashboard():
     return render_template(
         "dashboard.html", m=m, orders=orders, payments=payments, emails=emails,
         failed_webhooks=failed, webhook_secret=webhook_secret, stats=stats,
+        chart=chart, greeting=greeting, display_name=display_name, setup=setup,
         new_api_key=session.pop("new_api_key", None), fmt=services.fmt_amount,
         status_of=effective_status)
 
