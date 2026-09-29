@@ -5,6 +5,7 @@ import re
 import secrets
 import threading
 import time
+from urllib.parse import urlencode
 from collections import defaultdict
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -12,6 +13,7 @@ from functools import wraps
 
 from flask import (Flask, abort, flash, g, jsonify, redirect, render_template, request,
                    session, url_for, Response)
+import requests
 from pymongo.errors import DuplicateKeyError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -162,6 +164,26 @@ def healthz():
 
 
 # ---------------------------------------------------------------- auth
+def create_merchant(email: str, password_hash: str):
+    """Insert a new merchant. Returns (merchant, plaintext_api_key). Raises DuplicateKeyError."""
+    api_key = security.new_api_key()
+    merchant = {
+        "_id": "m_" + secrets.token_hex(8),
+        "email": email,
+        "password_hash": password_hash,
+        "created_at": services.utcnow(),
+        "upi_id": "", "payee_name": "", "webhook_url": "",
+        "api_key_hash": security.hash_api_key(api_key),
+        "api_key_prefix": api_key[:12],
+        "webhook_secret_enc": security.encrypt(security.new_webhook_secret()),
+        "imap": {"enabled": False, "host": "imap.gmail.com", "port": 993, "user": "",
+                 "password_enc": None, "allowed_senders": [], "require_auth": True},
+        "imap_status": {},
+    }
+    get_db().merchants.insert_one(merchant)
+    return merchant, api_key
+
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if os.environ.get("ALLOW_REGISTRATION", "1") != "1":
@@ -175,22 +197,8 @@ def register():
         if not EMAIL_RE.match(email) or len(password) < 8:
             flash("Enter a valid email and a password of at least 8 characters.", "error")
             return render_template("auth.html", mode="register"), 400
-        api_key = security.new_api_key()
-        merchant = {
-            "_id": "m_" + secrets.token_hex(8),
-            "email": email,
-            "password_hash": generate_password_hash(password),
-            "created_at": services.utcnow(),
-            "upi_id": "", "payee_name": "", "webhook_url": "",
-            "api_key_hash": security.hash_api_key(api_key),
-            "api_key_prefix": api_key[:12],
-            "webhook_secret_enc": security.encrypt(security.new_webhook_secret()),
-            "imap": {"enabled": False, "host": "imap.gmail.com", "port": 993, "user": "",
-                     "password_enc": None, "allowed_senders": [], "require_auth": True},
-            "imap_status": {},
-        }
         try:
-            get_db().merchants.insert_one(merchant)
+            merchant, api_key = create_merchant(email, generate_password_hash(password))
         except DuplicateKeyError:
             flash("That email is already registered.", "error")
             return render_template("auth.html", mode="register"), 409
@@ -209,13 +217,95 @@ def login():
             return render_template("auth.html", mode="login"), 429
         email = request.form.get("email", "").strip().lower()
         merchant = get_db().merchants.find_one({"email": email})
-        if merchant and check_password_hash(merchant["password_hash"], request.form.get("password", "")):
+        if merchant and merchant.get("password_hash") and check_password_hash(merchant["password_hash"], request.form.get("password", "")):
             session.clear()
             session["mid"] = merchant["_id"]
             return redirect(url_for("dashboard"))
         flash("Wrong email or password.", "error")
         return render_template("auth.html", mode="login"), 401
     return render_template("auth.html", mode="login")
+
+
+# ---------------------------------------------------------------- Google sign-in
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+
+
+def google_enabled() -> bool:
+    return bool(os.environ.get("GOOGLE_CLIENT_ID") and os.environ.get("GOOGLE_CLIENT_SECRET"))
+
+
+@app.context_processor
+def inject_google():
+    return {"google_enabled": google_enabled()}
+
+
+@app.get("/auth/google")
+def google_start():
+    if not google_enabled():
+        abort(404)
+    state = secrets.token_urlsafe(24)
+    session["g_state"] = state
+    params = {
+        "client_id": os.environ["GOOGLE_CLIENT_ID"],
+        "redirect_uri": base_url() + url_for("google_callback"),
+        "response_type": "code",
+        "scope": "openid email",
+        "state": state,
+        "prompt": "select_account",
+    }
+    return redirect(GOOGLE_AUTH_URL + "?" + urlencode(params))
+
+
+@app.get("/auth/google/callback")
+def google_callback():
+    if not google_enabled():
+        abort(404)
+    expected = session.pop("g_state", "")
+    if request.args.get("error") or not expected or not security.safe_equals(request.args.get("state", ""), expected):
+        flash("Google sign-in was cancelled or failed. Please try again.", "error")
+        return redirect(url_for("login"))
+    try:
+        tok = requests.post(GOOGLE_TOKEN_URL, data={
+            "code": request.args.get("code", ""),
+            "client_id": os.environ["GOOGLE_CLIENT_ID"],
+            "client_secret": os.environ["GOOGLE_CLIENT_SECRET"],
+            "redirect_uri": base_url() + url_for("google_callback"),
+            "grant_type": "authorization_code",
+        }, timeout=10)
+        tok.raise_for_status()
+        info = requests.get(GOOGLE_USERINFO_URL, timeout=10,
+                            headers={"Authorization": "Bearer " + tok.json()["access_token"]})
+        info.raise_for_status()
+        info = info.json()
+    except (requests.RequestException, KeyError, ValueError):
+        log.exception("google sign-in failed")
+        flash("Could not reach Google. Please try again.", "error")
+        return redirect(url_for("login"))
+
+    email = str(info.get("email", "")).strip().lower()
+    if not email or info.get("email_verified") is not True:
+        flash("Your Google email is not verified.", "error")
+        return redirect(url_for("login"))
+
+    merchant = get_db().merchants.find_one({"email": email})
+    if merchant:
+        session.clear()
+        session["mid"] = merchant["_id"]
+        return redirect(url_for("dashboard"))
+    if os.environ.get("ALLOW_REGISTRATION", "1") != "1":
+        flash("New sign-ups are closed.", "error")
+        return redirect(url_for("login"))
+    try:
+        merchant, api_key = create_merchant(email, "")
+    except DuplicateKeyError:  # double-click race: the account now exists
+        merchant, api_key = get_db().merchants.find_one({"email": email}), None
+    session.clear()
+    session["mid"] = merchant["_id"]
+    if api_key:
+        session["new_api_key"] = api_key
+    return redirect(url_for("dashboard"))
 
 
 @app.get("/logout")
