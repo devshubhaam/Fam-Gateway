@@ -1,5 +1,6 @@
 import json
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote, urlencode
 
@@ -56,7 +57,7 @@ def sweep_expired(db, merchant_id=None) -> int:
 
 
 def create_order(db, merchant: dict, amount_paise: int, *, order_ref=None, note=None,
-                 callback_url=None, redirect_url=None, expires_in=900) -> tuple[dict, bool]:
+                 callback_url=None, redirect_url=None, expires_in=900, source=None) -> tuple[dict, bool]:
     """Returns (order, created). Re-uses a live pending order with the same order_ref."""
     if not merchant.get("upi_id"):
         raise OrderError("Set your UPI ID in the dashboard before creating orders", 409)
@@ -78,6 +79,7 @@ def create_order(db, merchant: dict, amount_paise: int, *, order_ref=None, note=
             "merchant_id": merchant["_id"],
             "order_ref": order_ref,
             "note": note,
+            "source": source,
             "amount_paise": amount_paise,
             "payable_paise": amount_paise + offset,
             "status": "pending",
@@ -111,20 +113,38 @@ def build_payload(order: dict) -> dict:
     }
 
 
+def webhook_destinations(db, merchant: dict, order: dict) -> list:
+    """(url, label) pairs: the order's callback (or the merchant default) plus every active endpoint."""
+    dests = []
+
+    def add(url, label):
+        if url and url not in [u for u, _ in dests]:
+            dests.append((url, label))
+
+    if order.get("callback_url"):
+        add(order["callback_url"], "Order callback")
+    else:
+        add(merchant.get("webhook_url"), "Default endpoint")
+    for ep in db.webhook_endpoints.find({"merchant_id": merchant["_id"], "active": True}):
+        add(ep.get("url"), ep.get("name") or "Endpoint")
+    return dests
+
+
 def queue_webhook(db, merchant: dict, order: dict):
-    url = order.get("callback_url") or merchant.get("webhook_url")
-    if not url:
-        return
-    db.deliveries.insert_one({
-        "merchant_id": merchant["_id"],
-        "order_id": order["order_id"],
-        "url": url,
-        "body": json.dumps(build_payload(order), separators=(",", ":")),
-        "status": "pending",
-        "attempts": 0,
-        "next_attempt": utcnow(),
-        "created_at": utcnow(),
-    })
+    body = json.dumps(build_payload(order), separators=(",", ":"))
+    for url, label in webhook_destinations(db, merchant, order):
+        db.deliveries.insert_one({
+            "did": secrets.token_hex(8),
+            "merchant_id": merchant["_id"],
+            "order_id": order["order_id"],
+            "url": url,
+            "endpoint_name": label,
+            "body": body,
+            "status": "pending",
+            "attempts": 0,
+            "next_attempt": utcnow(),
+            "created_at": utcnow(),
+        })
 
 
 def settle_payment(db, merchant: dict, amount_paise: int, utr: str, received_at: datetime,
