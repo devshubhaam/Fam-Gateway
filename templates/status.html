@@ -1,0 +1,30 @@
+{% extends ("dash_base.html" if me else "base.html") %}
+{% block title %}System Status{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='pages.css') }}?v=2">{% endblock %}
+{% block pagehead %}{% endblock %}
+{% block content %}
+<div class="status-container" style="padding:0 16px;box-sizing:border-box">
+  <div class="status-header">
+    <h1>System Status</h1>
+    <p>Real-time health of {{ brand }} APIs and services.</p>
+  </div>
+  <div class="status-banner {{ 'up' if snap.ok else 'down' }}"><span class="status-dot"></span>{{ 'All systems operational' if snap.ok else 'Some systems are having problems' }}</div>
+  <div class="card" style="padding:8px 24px">
+    {% for c in snap.components %}
+    <div class="comp-row">
+      <div>
+        <div class="comp-name">{{ c.name }}</div>
+        <div class="comp-detail">{{ c.detail }}{% if c.note %} &middot; {{ c.note }}{% endif %}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        {% if c.ms is not none %}<span style="font-size:12.5px;color:var(--color-ink-mute)">{{ c.ms }} ms</span>{% endif %}
+        {% if c.ok %}<span class="badge-success">Operational</span>{% else %}<span class="badge-err">Degraded</span>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <p style="text-align:center;font-size:12.5px;color:var(--color-ink-mute);margin-top:16px">
+    Server up for {{ (snap.uptime_seconds // 3600) }}h {{ (snap.uptime_seconds % 3600) // 60 }}m &middot; machine-readable at <a href="{{ url_for('status_json') }}" style="color:var(--color-primary)">/status.json</a>
+  </p>
+</div>
+{% endblock %}

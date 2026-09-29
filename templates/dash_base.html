@@ -1,0 +1,68 @@
+{% from "_icons.html" import icon %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>{% block title %}Dashboard{% endblock %} - {{ brand }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='design.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='dash.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='pages.css') }}?v=2">
+{% block head %}{% endblock %}
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+<div class="dashboard-layout">
+  {% include "_sidebar.html" %}
+  <main class="main-content">
+    <div class="wrap">
+      {% block pagehead %}<div style="margin-bottom:24px">
+        <h1 style="font-size:22px;font-weight:700;color:var(--color-ink);letter-spacing:-0.5px">{% block heading %}{% endblock %}</h1>
+        <p style="font-size:13px;color:var(--color-ink-mute);margin-top:4px">{% block subheading %}{% endblock %}</p>
+      </div>{% endblock %}
+      {% with messages = get_flashed_messages(with_categories=true) %}{% for cat, msg in messages %}<div class="fg-flash {{ cat }}">{{ msg }}</div>{% endfor %}{% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+<div id="fgToast"></div>
+<script>
+(function () {
+  var sb = document.getElementById('sidebar'), ov = document.getElementById('sidebarOverlay'),
+      op = document.getElementById('openSidebarBtn'), cl = document.getElementById('closeSidebarBtn');
+  function set(o) { sb.classList.toggle('open', o); ov.style.display = o ? 'block' : 'none'; cl.style.display = o ? 'flex' : 'none'; }
+  if (op) op.addEventListener('click', function () { set(true); });
+  if (cl) cl.addEventListener('click', function () { set(false); });
+  if (ov) ov.addEventListener('click', function () { set(false); });
+  sb.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+})();
+function fgToast(msg) {
+  var t = document.createElement('div'); t.className = 'fg-toast'; t.textContent = msg;
+  document.getElementById('fgToast').appendChild(t); setTimeout(function () { t.remove(); }, 2200);
+}
+function fgCopy(text, label) {
+  function done() { fgToast(label || 'Copied'); }
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(done, fallback); } else { fallback(); }
+  function fallback() {
+    var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { fgToast('Copy failed'); }
+    ta.remove();
+  }
+}
+document.addEventListener('click', function (e) {
+  var b = e.target.closest('[data-copy]');
+  if (b) { e.preventDefault(); fgCopy(b.getAttribute('data-copy'), b.getAttribute('data-copy-label')); }
+  var c = e.target.closest('[data-copy-from]');
+  if (c) { var el = document.getElementById(c.getAttribute('data-copy-from')); if (el) fgCopy(el.value !== undefined && el.value !== '' ? el.value : el.textContent.trim(), c.getAttribute('data-copy-label')); }
+  var cf = e.target.closest('[data-confirm]');
+  if (cf && !window.confirm(cf.getAttribute('data-confirm'))) { e.preventDefault(); }
+});
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

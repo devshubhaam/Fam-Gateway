@@ -1,0 +1,39 @@
+{% from "_icons.html" import icon %}
+<div class="mobile-header">
+  <a class="dash-brand" href="{{ url_for('dashboard') }}"><span class="logo-mark">&#8377;</span>{{ brand }}</a>
+  <button class="mobile-menu-btn" id="openSidebarBtn" aria-label="Menu" type="button">{{ icon('menu', 16) }}</button>
+</div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <a class="dash-brand" href="{{ url_for('dashboard') }}"><span class="logo-mark">&#8377;</span>{{ brand }}</a>
+      <button class="mobile-menu-btn" id="closeSidebarBtn" style="display:none" aria-label="Close" type="button">{{ icon('x', 16) }}</button>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="sidebar-section-label">Main</div>
+    <a href="{{ url_for('dashboard') }}" class="sidebar-item {{ 'active' if active == 'dashboard' }}">{{ icon('dashboard') }} Dashboard</a>
+    <a href="{{ url_for('transactions') }}" class="sidebar-item {{ 'active' if active == 'transactions' }}">{{ icon('receipt') }} Transactions</a>
+    <a href="{{ url_for('payment_links') }}" class="sidebar-item {{ 'active' if active == 'links' }}">{{ icon('link') }} Payment Links</a>
+    <a href="{{ url_for('api_keys') }}" class="sidebar-item {{ 'active' if active == 'keys' }}">{{ icon('key-round') }} API Keys</a>
+    <a href="{{ url_for('webhooks_page') }}" class="sidebar-item {{ 'active' if active == 'webhooks' }}">{{ icon('send') }} Webhooks</a>
+    <div class="sidebar-section-label">Settings</div>
+    <a href="{{ url_for('integrations') }}" class="sidebar-item {{ 'active' if active == 'integrations' }}">{{ icon('plug') }} Integrations</a>
+    <a href="{{ url_for('profile') }}" class="sidebar-item {{ 'active' if active == 'profile' }}">{{ icon('user') }} Profile</a>
+    <a href="{{ url_for('dashboard') }}#settings" class="sidebar-item">{{ icon('settings') }} Payment settings</a>
+    <a href="{{ url_for('docs') }}" class="sidebar-item {{ 'active' if active == 'docs' }}">{{ icon('book') }} Documentation</a>
+    <a href="{{ url_for('status_page') }}" class="sidebar-item {{ 'active' if active == 'status' }}">{{ icon('activity') }} System Status</a>
+    {% if support_whatsapp %}<a href="https://wa.me/{{ support_whatsapp }}" target="_blank" rel="noopener" class="sidebar-item" style="color:#10b981;font-weight:600">{{ icon('whatsapp') }} WhatsApp Support</a>{% endif %}
+  </nav>
+  <div class="sidebar-footer">
+    <a href="{{ url_for('profile') }}" class="sidebar-user-card" style="text-decoration:none">
+      {% if me and me.avatar %}<img src="{{ me.avatar }}" class="sidebar-avatar" alt="">{% else %}<span class="sidebar-avatar sidebar-avatar-ph">{{ ((me.full_name or me.payee_name or me.email)[:1] if me else 'M')|upper }}</span>{% endif %}
+      <div style="overflow:hidden;min-width:0">
+        <div class="sidebar-user-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ (me.full_name or me.payee_name or me.email.split('@')[0]) if me else 'Merchant' }}</div>
+        <div class="sidebar-user-role" style="overflow:hidden;text-overflow:ellipsis">{{ me.email if me }}</div>
+      </div>
+    </a>
+    <a href="{{ url_for('logout') }}" class="sidebar-logout">{{ icon('logout', 15) }} Sign Out</a>
+  </div>
+</aside>
+<div class="sidebar-overlay" id="sidebarOverlay" style="display:none"></div>

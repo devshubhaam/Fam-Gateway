@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Checkout &#8377;{{ fmt(order.payable_paise) }} - {{ merchant.payee_name or brand }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='checkout.css') }}?v=1">
+</head>
+<body>
+<div class="product">
+  <div class="product-main" id="card" data-status="{{ status }}">
+    <div class="gateway-brand"><span class="brand-mark"><span class="logo-mark">&#8377;</span>{{ brand }}</span></div>
+    <div class="product-label">Order total</div>
+    <div class="money">&#8377; {{ fmt(order.payable_paise) }} <small>INR</small></div>
+
+    <div class="pay-card">
+      <div id="body-pending" {% if status != 'pending' %}hidden{% endif %}>
+        <div class="qr-container">
+          <div class="qr-box-wrap"><img id="qr" class="qr-image loaded" src="{{ url_for('qr', order_id=order.order_id) }}" alt="UPI QR code" width="170" height="170"></div>
+          <div class="qr-note">Scan with any UPI app</div>
+          <button type="button" class="save-qr" id="saveQr">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Save QR
+          </button>
+          <a class="open-app" href="{{ link }}">Open UPI app</a>
+          {% if order.payable_paise != order.amount_paise %}
+            <div class="exact-note">Pay exactly &#8377;{{ fmt(order.payable_paise) }} so your payment can be matched automatically.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div id="body-paid" class="success-container" {% if status != 'paid' %}hidden{% endif %}>
+        <div class="tick-wrap"><div class="tick-circle"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div></div>
+        <div class="success-title">Payment received</div>
+        <div class="success-sub">Thank you! You can close this page.</div>
+        {% if order.utr %}<div class="success-sub" style="font-family:monospace">UTR {{ order.utr }}</div>{% endif %}
+      </div>
+
+      <div id="body-expired" class="expired-box" {% if status != 'expired' %}hidden{% endif %}>
+        This payment link has expired.
+        <div class="success-sub" style="font-weight:400">Go back and start a new payment. If you already paid, contact the merchant with your UTR.</div>
+      </div>
+
+      <div class="pay-row"><span>Merchant</span><b style="text-transform:capitalize">{{ merchant.payee_name or merchant.full_name or 'Merchant' }}</b></div>
+      <div class="pay-row"><span>Order ID</span><b>{{ order.order_id }}</b></div>
+      <div class="pay-row" id="timerRow" {% if status != 'pending' %}hidden{% endif %}><span>Expires In</span><b id="timerText">--:--:--</b></div>
+      <div class="pay-row"><span>Verification</span>
+        <span class="status {{ status if status != 'pending' }}" id="statusBox"><span class="spinner-pulse"></span><span id="statusText">{{ {'pending': 'Waiting for payment...', 'paid': 'Payment verified', 'expired': 'Expired'}.get(status, status) }}</span></span>
+      </div>
+    </div>
+
+    <div class="checkout-footer" style="text-align:center;margin-top:-6px;margin-bottom:2px">
+      <a href="{{ url_for('index') }}" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;color:#2563eb"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>Secured by <b style="color:#0f172a;font-weight:700">{{ brand }}</b></span>
+      </a>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var orderId = {{ order.order_id | tojson }};
+  var expires = new Date({{ order.expires_at.isoformat() | tojson }}).getTime();
+  var current = {{ status | tojson }};
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function confetti() {
+    var colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#a855f7'];
+    for (var i = 0; i < 36; i++) {
+      var p = document.createElement('i'); p.className = 'confetti';
+      var a = Math.random() * Math.PI * 2, d = 90 + Math.random() * 170;
+      p.style.setProperty('--tx', Math.cos(a) * d + 'px'); p.style.setProperty('--ty', Math.sin(a) * d - 40 + 'px');
+      p.style.background = colors[i % colors.length];
+      document.body.appendChild(p); setTimeout(function (el) { el.remove(); }.bind(null, p), 1300);
+    }
+  }
+  function show(status, redirect) {
+    if (status === current) return;
+    current = status;
+    ['pending', 'paid', 'expired'].forEach(function (s) { $('body-' + s).hidden = (s !== status); });
+    $('timerRow').hidden = status !== 'pending';
+    $('statusBox').className = 'status' + (status === 'pending' ? '' : ' ' + status);
+    $('statusText').textContent = status === 'paid' ? 'Payment verified' : status === 'expired' ? 'Expired' : 'Waiting for payment...';
+    if (status === 'paid') {
+      confetti();
+      if (redirect && /^https?:\/\//i.test(redirect)) { setTimeout(function () { window.location.href = redirect; }, 3000); }
+    }
+  }
+  function tick() {
+    var left = Math.max(0, Math.floor((expires - Date.now()) / 1000));
+    var el = $('timerText');
+    if (el) el.textContent = pad(Math.floor(left / 3600)) + ':' + pad(Math.floor(left % 3600 / 60)) + ':' + pad(left % 60);
+  }
+  function poll() {
+    if (current === 'paid' || current === 'expired') return;
+    fetch('/api/public/orders/' + encodeURIComponent(orderId), { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { show(d.status, d.redirect_url); })
+      .catch(function () {});
+  }
+  var save = $('saveQr');
+  if (save) save.addEventListener('click', function () {
+    var src = $('qr').getAttribute('src');
+    function fileOut(blob, ext) {
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'qr-' + orderId + '.' + ext;
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+    fetch(src).then(function (r) { return r.text(); }).then(function (svg) {
+      var svgBlob = new Blob([svg], { type: 'image/svg+xml' }), url = URL.createObjectURL(svgBlob), img = new Image();
+      img.onload = function () {
+        var c = document.createElement('canvas'); c.width = c.height = 768;
+        var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 768, 768); x.drawImage(img, 0, 0, 768, 768);
+        c.toBlob(function (b) { b ? fileOut(b, 'png') : fileOut(svgBlob, 'svg'); }, 'image/png');
+      };
+      img.onerror = function () { fileOut(svgBlob, 'svg'); };
+      img.src = url;
+    });
+  });
+  tick(); setInterval(tick, 1000); setInterval(poll, 3000);
+})();
+</script>
+</body>
+</html>

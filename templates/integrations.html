@@ -1,0 +1,70 @@
+{% extends "dash_base.html" %}
+{% block title %}Integrations{% endblock %}
+{% block heading %}Integrations{% endblock %}
+{% block subheading %}Connect your FamPay Gmail to enable instant automated payment verification.{% endblock %}
+{% block content %}
+<div class="card" style="margin-top:20px;padding:40px">
+  <div class="integration-layout">
+    <div style="padding-top:10px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <div style="width:48px;height:48px;background:rgba(59,130,246,0.1);color:var(--color-primary);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ icon('mail', 24) }}</div>
+        <h2 style="font-size:18px;font-weight:600;color:var(--color-ink);margin:0">Automated Verification</h2>
+      </div>
+      <p class="hide-on-mobile" style="font-size:14px;color:var(--color-ink-mute);line-height:1.6;margin-bottom:24px">Connect your FamPay-linked Gmail account to enable real-time payment verification. Our server securely reads your transaction emails to mark payments as successful instantly.</p>
+      <div class="hide-on-mobile" style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid var(--color-hairline)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;color:var(--color-primary)">{{ icon('shield-check', 16) }}<span style="font-size:13px;font-weight:600;color:var(--color-ink)">Secure Connection</span></div>
+        <p style="font-size:12px;color:var(--color-ink-mute);line-height:1.5;margin:0">We use Google App Passwords to connect securely. Your main Gmail password is never needed. The App Password is stored encrypted.</p>
+      </div>
+    </div>
+
+    <div style="margin:0;padding-top:10px">
+      <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--color-hairline)">
+        <div style="display:flex;align-items:center;gap:10px;font-weight:600;font-size:16px;color:var(--color-ink)">
+          Integration Setup
+          {% if connected and last_error %}<span class="badge-err" style="margin-left:auto">{{ icon('shield-alert', 13) }} Error</span>
+          {% elif connected %}<span class="badge-success" style="margin-left:auto">{{ icon('check', 13) }} Connected</span>
+          {% else %}<span class="badge-off" style="margin-left:auto">Not connected</span>{% endif %}
+        </div>
+        {% if connected and last_error %}<div style="font-size:12.5px;color:#b91c1c;margin-top:8px">Last mailbox error: {{ last_error }}</div>{% endif %}
+      </div>
+      <form method="post" action="{{ url_for('integrations') }}" autocomplete="off">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <div class="form-group">
+          <label class="form-label">FamPay-linked Gmail Address</label>
+          <input type="email" name="gmail" class="form-input" placeholder="yourname@gmail.com" value="{{ m.imap.user }}" required autocapitalize="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gmail App Password (16-digit)</label>
+          <div class="pw-wrap">
+            <input type="password" name="app_password" id="appPw" class="form-input" style="padding-right:42px" placeholder="{{ 'Saved - leave blank to keep' if has_password else 'xxxx xxxx xxxx xxxx' }}" {{ '' if has_password else 'required' }} autocomplete="new-password">
+            <button type="button" id="togglePw" aria-label="Show or hide">{{ icon('eye', 16) }}</button>
+          </div>
+          <div style="font-size:12px;color:var(--color-ink-mute);margin-top:6px;line-height:1.4"><strong>Important:</strong> Make sure <a href="https://mail.google.com/mail/u/0/#settings/fwdandpop" target="_blank" rel="noopener" style="color:var(--color-primary);text-decoration:underline">IMAP is enabled</a> in your Gmail settings.</div>
+        </div>
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label class="form-label" style="margin-bottom:0">Your FamPay UPI ID</label>
+            <a href="https://play.google.com/store/apps/details?id=com.fampay.in" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:4px">Download FamApp {{ icon('external', 12) }}</a>
+          </div>
+          <input type="text" name="fampay_upi_id" class="form-input" placeholder="username@fam" value="{{ m.upi_id }}" required autocapitalize="off">
+          <div class="warn-box">{{ icon('info', 14) }}<div><strong style="color:#b45309">Important:</strong> Enter the exact active UPI ID from your <strong>FamApp</strong> (ends with <code>@fam</code> or <code>@yesfam</code>). If a non-existent or other bank's UPI ID is entered, customer UPI apps (PhonePe, GPay, Paytm) will reject payments as <em>"Invalid QR / VPA not found"</em>.</div></div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:12px;width:100%;padding:12px">{{ icon('check', 15) }} {{ 'Update Connection' if connected else 'Connect Gmail' }}</button>
+      </form>
+      {% if connected %}
+      <form method="post" action="{{ url_for('integrations_disconnect') }}" style="margin-top:12px">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button type="submit" class="btn btn-danger" style="width:100%;padding:12px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;box-shadow:none" data-confirm="Disconnect Gmail? Payments will no longer be verified automatically.">{{ icon('unlink', 15) }} Disconnect Gmail</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('togglePw').addEventListener('click', function () {
+  var i = document.getElementById('appPw'); i.type = i.type === 'password' ? 'text' : 'password';
+});
+</script>
+{% endblock %}

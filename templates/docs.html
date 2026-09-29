@@ -1,0 +1,290 @@
+{% extends ("dash_base.html" if me else "base.html") %}
+{% block title %}Developer Documentation &amp; API Reference{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='docs.css') }}?v=1">{% endblock %}
+{% block pagehead %}{% endblock %}
+{% block content %}
+{% macro tabs(group, names) %}<div class="doc-code-tabs">{% for n in names %}<button type="button" class="doc-tab-btn {{ 'active' if loop.first }}" data-group="{{ group }}" data-pane="{{ group }}-{{ loop.index0 }}">{{ n }}</button>{% endfor %}</div>{% endmacro %}
+<div class="docs-wrap">
+  <div class="docs-header">
+    <div class="hero-meta-row">
+      <div class="hero-tags-group">
+        <span class="docs-badge">API v1</span>
+        <a href="{{ url_for('status_page') }}" class="live-status-pill {{ '' if status_ok else 'down' }}" title="View live system status"><span class="live-status-dot"></span>{{ 'Operational' if status_ok else 'Degraded' }}</a>
+      </div>
+    </div>
+    <h1 class="docs-title">Developer Documentation &amp; API Reference</h1>
+    <p class="docs-subtitle">Create UPI orders, show a QR or hosted checkout, and receive a signed webhook the moment the payment is confirmed. Built for scripts, Telegram bots and web backends.</p>
+    <div class="hero-cli-bar">
+      <div class="cli-command-box" id="cliCopy" title="Click to copy" data-copy="curl -X POST {{ base }}/api/v1/orders"><span>$</span><code>curl -X POST {{ base }}/api/v1/orders</code></div>
+      <div class="cli-links-group">
+        <a href="#sec-endpoints-directory" class="cli-link" style="color:#2563eb!important;font-weight:700">Endpoints &darr;</a>
+        <a href="#sec-4" class="cli-link">Webhooks</a>
+        <a href="{{ url_for('status_json') }}" target="_blank" class="cli-link">status.json</a>
+        <button type="button" id="copyFullDocsBtn" class="cli-link" title="Copy the whole page as text">Copy text</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="sec-endpoints-directory" class="doc-card" style="border:1px solid #bfdbfe;background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%)">
+    <div class="doc-card-header" style="margin-bottom:8px">
+      <div class="doc-sec-num" style="background:#2563eb;color:#fff;border-color:#2563eb">&#8594;</div>
+      <div><h2 class="doc-sec-title" style="font-size:20px">All API Endpoints at a Glance</h2>
+      <span style="font-size:13.5px;color:#64748b">Every production URL, method and auth level, with jump links.</span></div>
+    </div>
+    <div class="doc-table-wrap" style="margin-top:16px;margin-bottom:0">
+      <table class="doc-table">
+        <thead><tr><th style="width:80px">Method</th><th>Endpoint / Path</th><th style="width:130px">Auth Level</th><th style="min-width:250px">Primary Purpose</th><th style="width:90px;text-align:center">Doc Link</th></tr></thead>
+        <tbody>
+          <tr><td><span class="method-badge post">POST</span></td><td><div class="endpoint-row"><code class="param-name">/api/v1/orders</code><button type="button" class="mini-copy-btn" data-copy="{{ base }}/api/v1/orders">Copy</button></div></td><td><span class="auth-badge req">API Key</span></td><td>Create an order, reserve a unique payable amount, return QR, UPI link and hosted page URL</td><td style="text-align:center"><a href="#sec-2" class="jump-link">Sec 2 &rarr;</a></td></tr>
+          <tr><td><span class="method-badge get">GET</span></td><td><div class="endpoint-row"><code class="param-name">/api/v1/orders/{order_id}</code><button type="button" class="mini-copy-btn" data-copy="{{ base }}/api/v1/orders/">Copy</button></div></td><td><span class="auth-badge req">API Key</span></td><td>Server-to-server status check returning the customer's UTR once paid</td><td style="text-align:center"><a href="#sec-3" class="jump-link">Sec 3 &rarr;</a></td></tr>
+          <tr><td><span class="method-badge get">GET</span></td><td><div class="endpoint-row"><code class="param-name">/api/public/orders/{order_id}</code><button type="button" class="mini-copy-btn" data-copy="{{ base }}/api/public/orders/">Copy</button></div></td><td><span class="auth-badge public">Public</span></td><td>Browser-safe status polling (no API key), returns only status and redirect URL</td><td style="text-align:center"><a href="#sec-3" class="jump-link">Sec 3 &rarr;</a></td></tr>
+          <tr><td><span class="method-badge get">GET</span></td><td><div class="endpoint-row"><code class="param-name">/pay/{order_id}</code><button type="button" class="mini-copy-btn" data-copy="{{ base }}/pay/">Copy</button></div></td><td><span class="auth-badge public">Public UI</span></td><td>Hosted checkout page with QR, UPI app button and live confirmation</td><td style="text-align:center"><a href="#sec-2" class="jump-link">Sec 2 &rarr;</a></td></tr>
+          <tr><td><span class="method-badge get">GET</span></td><td><div class="endpoint-row"><code class="param-name">/qr/{order_id}.svg</code><button type="button" class="mini-copy-btn" data-copy="{{ base }}/qr/">Copy</button></div></td><td><span class="auth-badge public">Public</span></td><td>QR code image (SVG) for use in an <code>&lt;img&gt;</code> tag or a bot message</td><td style="text-align:center"><a href="#sec-2" class="jump-link">Sec 2 &rarr;</a></td></tr>
+          <tr><td><span class="method-badge post">POST</span></td><td><div class="endpoint-row"><code class="param-name">Your webhook URL</code></div></td><td><span class="auth-badge hmac">HMAC-SHA256</span></td><td>Callback sent on payment success, signed with <code>X-Signature</code></td><td style="text-align:center"><a href="#sec-4" class="jump-link">Sec 4 &rarr;</a></td></tr>
+          <tr><td><span class="method-badge get">GET</span></td><td><div class="endpoint-row"><code class="param-name">/status.json</code><button type="button" class="mini-copy-btn" data-copy="{{ base }}/status.json">Copy</button></div></td><td><span class="auth-badge public">Public</span></td><td>Live service health, machine readable</td><td style="text-align:center"><a href="{{ url_for('status_page') }}" class="jump-link">Live &rarr;</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="sec-0" class="doc-card">
+    <div class="doc-card-header"><div class="doc-sec-num">0</div><h2 class="doc-sec-title">Base URL &amp; Authentication</h2></div>
+    <p class="doc-sec-desc">All requests go over HTTPS. Send your secret key as a bearer token (or in an <code>X-API-Key</code> header). You can copy your key from the <a href="{{ url_for('api_keys') }}" style="color:#2563eb;font-weight:600">API Keys</a> page.</p>
+    <div class="doc-code-box">
+      <div class="doc-code-header"><span class="doc-code-label">BASE URL</span><button type="button" class="doc-copy-btn">Copy</button></div>
+      <pre class="doc-code-content">{{ base }}</pre>
+    </div>
+    <div class="doc-code-box">
+      <div class="doc-code-header"><span class="doc-code-label">HEADER</span><button type="button" class="doc-copy-btn">Copy</button></div>
+      <pre class="doc-code-content">Authorization: Bearer sk_live_xxxxxxxxxxxxxxxx</pre>
+    </div>
+    <div class="doc-note"><strong>Keep the key on your server.</strong> Never put it in browser JavaScript, a mobile app or a public repo. If it leaks, generate a new one from the API Keys page; the old one stops working immediately.</div>
+    <div class="doc-table-wrap" style="margin-top:18px;margin-bottom:0">
+      <table class="doc-table">
+        <thead><tr><th>Resource</th><th style="width:90px">Method</th><th>Limit</th><th>When exceeded</th></tr></thead>
+        <tbody>
+          <tr><td><code>/api/v1/orders</code></td><td>POST</td><td>120 requests / minute / merchant</td><td>HTTP 429 <code>rate limit exceeded</code></td></tr>
+          <tr><td><code>/api/v1/orders/{id}</code></td><td>GET</td><td>Server-to-server, poll every few seconds at most</td><td>&mdash;</td></tr>
+          <tr><td>Webhook delivery</td><td>POST</td><td>One queued delivery per endpoint</td><td>Retried up to 6 times with growing delays</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="doc-note" style="margin-top:16px"><strong>Non-custodial:</strong> customers pay straight into your own UPI account; {{ brand }} never holds money, so there is no refund API. Refund from your UPI app.</div>
+  </div>
+
+  <div id="sec-1" class="doc-card">
+    <div class="doc-card-header"><div class="doc-sec-num">1</div><h2 class="doc-sec-title">Prerequisites &mdash; Connect Your Mailbox</h2></div>
+    <p class="doc-sec-desc">Payments are confirmed by reading the credit alert email your UPI app sends. Connect that Gmail once on the <a href="{{ url_for('integrations') if me else url_for('login') }}" style="color:#2563eb;font-weight:600;text-decoration:underline">Integrations page</a>.</p>
+    <div class="doc-table-wrap">
+      <table class="doc-table">
+        <thead><tr><th style="width:60px">Step</th><th>What to do</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:700;color:#2563eb">1</td><td><strong>Enable IMAP in Gmail:</strong> Settings &rarr; See all settings &rarr; Forwarding and POP/IMAP &rarr; Enable IMAP &rarr; Save. (<a href="https://mail.google.com/mail/u/0/#settings/fwdandpop" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600">direct link</a>)</td></tr>
+          <tr><td style="font-weight:700;color:#2563eb">2</td><td>Create a 16-letter <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" style="color:#2563eb;font-weight:600">Google App Password</a> (needs 2-step verification).</td></tr>
+          <tr><td style="font-weight:700;color:#2563eb">3</td><td>Open <strong>Integrations</strong>, enter the Gmail address, the App Password and your UPI ID (for example <code>yourname@fam</code>).</td></tr>
+          <tr><td style="font-weight:700;color:#2563eb">4</td><td>Click <strong>Connect Gmail</strong>. The login is tested first; once it works the status turns to <em>Connected</em>.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="doc-note" style="border-left:4px solid #f59e0b;background:#fffbeb"><strong style="color:#b45309">Common gotcha:</strong> <span style="color:#92400e">if IMAP is off, Gmail refuses the login even when the App Password is right. Check that setting first.</span></div>
+  </div>
+
+  <div id="sec-2" class="doc-card">
+    <div class="doc-card-header"><div class="doc-sec-num">2</div><h2 class="doc-sec-title">Create Order &amp; Generate UPI QR</h2></div>
+    <p class="doc-sec-desc"><code>POST {{ base }}/api/v1/orders</code> &mdash; only <code>amount</code> is required. Creating another pending order with the same <code>order_ref</code> and amount returns the existing one (HTTP 200) instead of a duplicate.</p>
+    <div class="doc-table-wrap">
+      <table class="doc-table">
+        <thead><tr><th>Field</th><th>Type</th><th></th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code class="param-name">amount</code></td><td><span class="badge-type">number</span></td><td><span class="badge-req">required</span></td><td>Amount in INR, at most 2 decimals</td></tr>
+          <tr><td><code class="param-name">order_ref</code></td><td><span class="badge-type">string</span></td><td><span class="badge-opt">optional</span></td><td>Your own reference (max 100 chars), echoed back in the webhook</td></tr>
+          <tr><td><code class="param-name">note</code></td><td><span class="badge-type">string</span></td><td><span class="badge-opt">optional</span></td><td>Short note shown in the UPI app (max 60 chars)</td></tr>
+          <tr><td><code class="param-name">callback_url</code></td><td><span class="badge-type">string</span></td><td><span class="badge-opt">optional</span></td><td>Webhook URL for this order (overrides your default endpoints)</td></tr>
+          <tr><td><code class="param-name">redirect_url</code></td><td><span class="badge-type">string</span></td><td><span class="badge-opt">optional</span></td><td>Where the checkout page sends the customer after payment</td></tr>
+          <tr><td><code class="param-name">expires_in</code></td><td><span class="badge-type">seconds</span></td><td><span class="badge-opt">optional</span></td><td>Default 900 (15 minutes)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="doc-code-box">
+      <div class="doc-code-header">{{ tabs('create', ['cURL', 'Python', 'Node.js']) }}<button type="button" class="doc-copy-btn">Copy</button></div>
+      <pre class="doc-code-content doc-pane active" data-pane="create-0">curl -X POST {{ base }}/api/v1/orders \
+  -H "Authorization: Bearer sk_live_xxx" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 499,
+    "order_ref": "user42-premium",
+    "callback_url": "https://your-app.example.com/payment-webhook",
+    "redirect_url": "https://t.me/yourbot",
+    "expires_in": 900
+  }'</pre>
+      <pre class="doc-code-content doc-pane" data-pane="create-1">import requests
+
+r = requests.post(
+    "{{ base }}/api/v1/orders",
+    headers={"Authorization": "Bearer sk_live_xxx"},
+    json={"amount": 499, "order_ref": "user42-premium", "expires_in": 900},
+    timeout=15,
+)
+order = r.json()
+print(order["pay_url"], order["payable_amount"])</pre>
+      <pre class="doc-code-content doc-pane" data-pane="create-2">const res = await fetch("{{ base }}/api/v1/orders", {
+  method: "POST",
+  headers: { "Authorization": "Bearer sk_live_xxx", "Content-Type": "application/json" },
+  body: JSON.stringify({ amount: 499, order_ref: "user42-premium", expires_in: 900 }),
+});
+const order = await res.json();
+console.log(order.pay_url, order.payable_amount);</pre>
+    </div>
+    <div class="doc-code-box">
+      <div class="doc-code-header"><span class="doc-code-label">RESPONSE 201</span><button type="button" class="doc-copy-btn">Copy</button></div>
+      <pre class="doc-code-content">{
+  "order_id": "ord_Ab3dE9xQz1k",
+  "order_ref": "user42-premium",
+  "status": "pending",
+  "amount": "499.00",
+  "payable_amount": "499.00",
+  "currency": "INR",
+  "upi_link": "upi://pay?pa=you%40fam&pn=You&am=499.00&cu=INR&tn=...",
+  "qr_url": "{{ base }}/qr/ord_Ab3dE9xQz1k.svg",
+  "pay_url": "{{ base }}/pay/ord_Ab3dE9xQz1k",
+  "expires_at": "2026-01-01T10:15:00+00:00",
+  "utr": null,
+  "paid_at": null,
+  "created": true
+}</pre>
+    </div>
+    <div class="doc-note" style="border-left:4px solid #f59e0b;background:#fffbeb"><strong style="color:#b45309">Always show <code>payable_amount</code>.</strong> <span style="color:#92400e">If another open order already holds the same amount, a few paise are added so every open order has a unique amount. The customer must pay exactly that figure; it is what makes automatic matching unambiguous.</span></div>
+  </div>
+
+  <div id="sec-3" class="doc-card">
+    <div class="doc-card-header"><div class="doc-sec-num">3</div><h2 class="doc-sec-title">Verify Payment Status</h2></div>
+    <p class="doc-sec-desc"><code>GET {{ base }}/api/v1/orders/&lt;order_id&gt;</code> returns the same object as create, with <code>status</code> of <code>pending</code>, <code>paid</code> or <code>expired</code>. Paid orders include <code>utr</code> and <code>paid_at</code>. Prefer the webhook; use polling as a fallback.</p>
+    <div class="doc-code-box">
+      <div class="doc-code-header"><span class="doc-code-label">SERVER-TO-SERVER</span><button type="button" class="doc-copy-btn">Copy</button></div>
+      <pre class="doc-code-content">curl {{ base }}/api/v1/orders/ord_Ab3dE9xQz1k \
+  -H "Authorization: Bearer sk_live_xxx"</pre>
+    </div>
+    <div class="doc-code-box">
+      <div class="doc-code-header"><span class="doc-code-label">BROWSER-SAFE (NO KEY)</span><button type="button" class="doc-copy-btn">Copy</button></div>
+      <pre class="doc-code-content">GET {{ base }}/api/public/orders/ord_Ab3dE9xQz1k
+
+{ "status": "paid", "redirect_url": "https://t.me/yourbot" }</pre>
+    </div>
+  </div>
+
+  <div id="sec-4" class="doc-card">
+    <div class="doc-card-header"><div class="doc-sec-num">4</div><h2 class="doc-sec-title">Webhooks</h2></div>
+    <p class="doc-sec-desc">When a payment is matched we <code>POST</code> JSON to your endpoints. Respond with any 2xx status. Failed deliveries are retried up to 6 times with increasing delays, and you can retry manually from the Webhooks page.</p>
+    <div class="doc-code-box">
+      <div class="doc-code-header"><span class="doc-code-label">PAYLOAD</span><button type="button" class="doc-copy-btn">Copy</button></div>
+      <pre class="doc-code-content">{
+  "event": "payment.success",
+  "order_id": "ord_Ab3dE9xQz1k",
+  "order_ref": "user42-premium",
+  "amount": "499.00",
+  "payable_amount": "499.00",
+  "currency": "INR",
+  "utr": "412345678901",
+  "paid_at": "2026-01-01T10:03:11+00:00",
+  "paid_late": false
+}</pre>
+    </div>
+    <div class="doc-note">Headers <code>X-Timestamp</code> and <code>X-Signature: sha256=&lt;hex&gt;</code> are sent. The signature is HMAC-SHA256 of <code>timestamp + "." + raw_body</code> using your signing secret. <strong>Always verify it</strong>, reject old timestamps, and make the handler idempotent on <code>order_id</code> because a webhook can be delivered more than once.</div>
+    <div class="doc-code-box">
+      <div class="doc-code-header">{{ tabs('hook', ['Python', 'Node.js', 'PHP']) }}<button type="button" class="doc-copy-btn">Copy</button></div>
+      <pre class="doc-code-content doc-pane active" data-pane="hook-0">import hmac, hashlib, time
+from flask import Flask, request, abort
+
+app = Flask(__name__)
+SECRET = "whsec_..."          # from your dashboard
+
+@app.post("/payment-webhook")
+def webhook():
+    ts  = request.headers.get("X-Timestamp", "")
+    sig = request.headers.get("X-Signature", "")
+    body = request.get_data()                       # raw bytes, not re-serialised JSON
+    if not ts.isdigit() or abs(time.time() - int(ts)) &gt; 300:
+        abort(400)
+    expected = "sha256=" + hmac.new(SECRET.encode(), ts.encode() + b"." + body,
+                                    hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        abort(401)
+    data = request.get_json()
+    # if data["order_id"] is not already fulfilled -> deliver the product
+    return "ok"</pre>
+      <pre class="doc-code-content doc-pane" data-pane="hook-1">const crypto = require("crypto");
+const express = require("express");
+const app = express();
+const SECRET = "whsec_...";
+
+app.post("/payment-webhook", express.raw({ type: "*/*" }), (req, res) => {
+  const ts = req.header("X-Timestamp") || "";
+  const sig = req.header("X-Signature") || "";
+  if (!/^\d+$/.test(ts) || Math.abs(Date.now() / 1000 - Number(ts)) &gt; 300) return res.sendStatus(400);
+  const expected = "sha256=" + crypto.createHmac("sha256", SECRET)
+    .update(ts + ".").update(req.body).digest("hex");
+  const ok = sig.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+  if (!ok) return res.sendStatus(401);
+  const data = JSON.parse(req.body);   // fulfil once per data.order_id
+  res.send("ok");
+});</pre>
+      <pre class="doc-code-content doc-pane" data-pane="hook-2">&lt;?php
+$secret = "whsec_...";
+$ts   = $_SERVER["HTTP_X_TIMESTAMP"] ?? "";
+$sig  = $_SERVER["HTTP_X_SIGNATURE"] ?? "";
+$body = file_get_contents("php://input");
+if (!ctype_digit($ts) || abs(time() - (int)$ts) &gt; 300) { http_response_code(400); exit; }
+$expected = "sha256=" . hash_hmac("sha256", $ts . "." . $body, $secret);
+if (!hash_equals($expected, $sig)) { http_response_code(401); exit; }
+$data = json_decode($body, true);   // fulfil once per $data["order_id"]
+echo "ok";</pre>
+    </div>
+  </div>
+
+  <div id="sec-5" class="doc-card">
+    <div class="doc-card-header"><div class="doc-sec-num">5</div><h2 class="doc-sec-title">Errors</h2></div>
+    <p class="doc-sec-desc">Errors return JSON like <code>{"error": "message"}</code> with a matching HTTP status.</p>
+    <div class="doc-table-wrap" style="margin-bottom:0">
+      <table class="doc-table">
+        <thead><tr><th style="width:90px">Status</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>400</td><td>Body is not a JSON object, or a field is invalid (amount, redirect_url, callback_url)</td></tr>
+          <tr><td>401</td><td>Missing or wrong API key</td></tr>
+          <tr><td>404</td><td>Order not found for your account</td></tr>
+          <tr><td>429</td><td>Rate limit exceeded, retry after a minute</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  function copy(text, btn) {
+    function ok() { if (btn) { var o = btn.textContent; btn.textContent = 'Copied'; setTimeout(function () { btn.textContent = o; }, 1200); } }
+    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(ok); return; }
+    var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); ok(); } catch (e) {} ta.remove();
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('.doc-tab-btn');
+    if (t) {
+      var box = t.closest('.doc-code-box'), g = t.getAttribute('data-group');
+      box.querySelectorAll('.doc-tab-btn[data-group="' + g + '"]').forEach(function (b) { b.classList.toggle('active', b === t); });
+      box.querySelectorAll('.doc-pane').forEach(function (p) { p.classList.toggle('active', p.getAttribute('data-pane') === t.getAttribute('data-pane')); });
+      return;
+    }
+    var c = e.target.closest('.doc-copy-btn');
+    if (c) {
+      var box2 = c.closest('.doc-code-box'), pane = box2.querySelector('.doc-pane.active') || box2.querySelector('.doc-code-content');
+      copy(pane.textContent, c); return;
+    }
+    var m = e.target.closest('.mini-copy-btn, #cliCopy');
+    if (m) { copy(m.getAttribute('data-copy'), m.classList.contains('mini-copy-btn') ? m : null); return; }
+    if (e.target.closest('#copyFullDocsBtn')) { copy(document.querySelector('.docs-wrap').innerText, e.target.closest('#copyFullDocsBtn')); }
+  });
+})();
+</script>
+{% endblock %}
