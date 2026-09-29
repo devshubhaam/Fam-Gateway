@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - {{ brand }}{% endblock %}
+{% block content %}
+<section class="page-head"><div class="shell">
+  <div class="eyebrow">Dashboard</div>
+  <h1>Payments &amp; setup</h1>
+  <p>{{ m.email }} &middot; times shown in UTC</p>
+</div></section>
+
+<div class="shell stack">
+
+  {% if new_api_key %}
+  <div class="card">
+    <h2>Your new API key</h2>
+    <p class="sub">Copy it now &mdash; it is shown only once. If you lose it, regenerate it below.</p>
+    <div class="secret">{{ new_api_key }}</div>
+  </div>
+  {% endif %}
+
+  {% if failed_webhooks %}
+  <div class="notice warn">{{ failed_webhooks }} webhook deliver{{ 'y' if failed_webhooks == 1 else 'ies' }} failed after all retries. Check that your callback URL is reachable and returns a 2xx status.</div>
+  {% endif %}
+
+  <div class="card">
+    <h2>1 &middot; Payment settings</h2>
+    <p class="sub">Where customers pay, and where webhooks are sent by default.</p>
+    <form method="post" action="{{ url_for('save_settings') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="grid2">
+        <div class="field"><label for="upi_id">Your UPI ID</label><input id="upi_id" name="upi_id" value="{{ m.upi_id }}" placeholder="name@fam" autocapitalize="off"></div>
+        <div class="field"><label for="payee_name">Payee name</label><input id="payee_name" name="payee_name" value="{{ m.payee_name }}" placeholder="Shown to customers"></div>
+      </div>
+      <div class="field"><label for="webhook_url">Default webhook URL</label><input id="webhook_url" name="webhook_url" value="{{ m.webhook_url }}" placeholder="https://your-app.onrender.com/payment-webhook" autocapitalize="off"><small>Must be https. You can also pass <code>callback_url</code> per order.</small></div>
+      <button class="primary" type="submit">Save settings</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>2 &middot; Mailbox that receives credit alerts</h2>
+    <p class="sub">{{ brand }} reads new alerts from the senders you list, checks they are authentic, and matches them to open orders. Use a dedicated mailbox (for example a new Gmail with a forwarding rule from your main inbox) and an <b>app password</b>, never your main password.</p>
+    <form method="post" action="{{ url_for('save_imap') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="grid2">
+        <div class="field"><label for="host">IMAP host</label><input id="host" name="host" value="{{ m.imap.host }}" autocapitalize="off"></div>
+        <div class="field"><label for="user">Mailbox username</label><input id="user" name="user" value="{{ m.imap.user }}" placeholder="you@gmail.com" autocapitalize="off"></div>
+      </div>
+      <div class="field"><label for="password">App password</label><input id="password" name="password" type="password" placeholder="{{ 'Saved - leave blank to keep' if m.imap.password_enc else 'Paste the 16-character app password' }}" autocomplete="off"></div>
+      <div class="field"><label for="allowed_senders">Allowed senders</label>
+        <textarea id="allowed_senders" name="allowed_senders" rows="2" placeholder="alerts@yourbank.com">{{ m.imap.allowed_senders | join('\n') }}</textarea>
+        <small>One per line: a full address, or a domain like <code>yourbank.com</code>. Only mail from these senders is ever read.</small></div>
+      <label class="check"><input type="checkbox" name="require_auth" {{ 'checked' if m.imap.require_auth }}> Require DKIM/DMARC pass (blocks spoofed emails &mdash; recommended)</label>
+      <label class="check"><input type="checkbox" name="enabled" {{ 'checked' if m.imap.enabled }}> Enable automatic verification</label>
+      <div class="row">
+        <button class="primary" type="submit">Save mailbox</button>
+      </div>
+    </form>
+    <form method="post" action="{{ url_for('test_imap') }}" style="margin-top:10px"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn-ghost" type="submit">Test connection</button></form>
+    {% if m.imap_status and m.imap_status.last_poll_at %}
+      <p class="sub" style="margin:14px 0 0">Last check: {{ m.imap_status.last_poll_at | dt }}
+      {% if m.imap_status.last_error %}<br><span style="color:#b91c1c">Error: {{ m.imap_status.last_error }}</span>{% endif %}</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>3 &middot; API credentials</h2>
+    <p class="sub">Send the key as <code>Authorization: Bearer &lt;key&gt;</code>. Verify webhooks with the signing secret.</p>
+    <div class="field"><label>API key</label><div class="secret">{{ m.api_key_prefix }}&hellip; (hidden)</div></div>
+    <div class="field"><label>Webhook signing secret</label><div class="secret">{{ webhook_secret }}</div></div>
+    <form method="post" action="{{ url_for('regenerate_key') }}" onsubmit="return confirm('Regenerate the API key? The old key stops working immediately.')">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn-ghost" type="submit">Regenerate API key</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Try it: create a test order</h2>
+    <p class="sub">Opens the hosted checkout page so you can pay with your UPI app and watch it confirm.</p>
+    <form method="post" action="{{ url_for('test_order') }}" class="row">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="field" style="margin:0;width:140px"><input name="amount" inputmode="decimal" value="1" aria-label="Amount in INR"></div>
+      <button class="primary" type="submit">Create test order</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Recent orders</h2>
+    {% if orders %}<div class="table-wrap"><table class="t">
+      <tr><th>Order</th><th>Payable</th><th>Status</th><th>UTR</th><th>Created</th></tr>
+      {% for o in orders %}<tr>
+        <td class="mono"><a href="{{ url_for('pay', order_id=o.order_id) }}">{{ o.order_id }}</a>{% if o.order_ref %}<br>{{ o.order_ref }}{% endif %}</td>
+        <td>&#8377;{{ fmt(o.payable_paise) }}</td>
+        <td><span class="badge {{ status_of(o) }}">{{ status_of(o) }}{{ ' (late)' if o.paid_late }}</span></td>
+        <td class="mono">{{ o.utr or '-' }}</td><td>{{ o.created_at | dt }}</td></tr>{% endfor %}
+    </table></div>{% else %}<p class="empty">No orders yet.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Recent payments detected</h2>
+    {% if payments %}<div class="table-wrap"><table class="t">
+      <tr><th>UTR</th><th>Amount</th><th>Result</th><th>Order</th><th>Detected</th></tr>
+      {% for p in payments %}<tr><td class="mono">{{ p.utr }}</td><td>&#8377;{{ fmt(p.amount_paise) }}</td>
+        <td><span class="badge {{ p.status }}">{{ p.status }}</span></td><td class="mono">{{ p.order_id or '-' }}</td><td>{{ p.created_at | dt }}</td></tr>{% endfor %}
+    </table></div>
+    <p class="sub" style="margin:12px 0 0">"unmatched" means money arrived but no open order had that exact amount.</p>
+    {% else %}<p class="empty">Nothing detected yet.</p>{% endif %}
+  </div>
+
+  <div class="card">
+    <h2>Recent emails processed</h2>
+    <p class="sub">Use this to check the parser is reading your bank's alerts correctly.</p>
+    {% if emails %}<div class="table-wrap"><table class="t">
+      <tr><th>When</th><th>Sender</th><th>Subject</th><th>Result</th></tr>
+      {% for e in emails %}<tr><td>{{ e.created_at | dt }}</td><td class="mono">{{ e.sender }}</td><td>{{ e.subject }}</td><td>{{ e.result }}</td></tr>{% endfor %}
+    </table></div>{% else %}<p class="empty">No emails processed yet.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

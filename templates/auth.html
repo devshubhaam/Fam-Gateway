@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Create account' if mode == 'register' else 'Sign in' }} - {{ brand }}{% endblock %}
+{% block content %}
+<section class="page-head"><div class="shell">
+  <div class="eyebrow">{{ 'New account' if mode == 'register' else 'Welcome back' }}</div>
+  <h1>{{ 'Create your account' if mode == 'register' else 'Sign in' }}</h1>
+</div></section>
+<div class="shell auth-wrap">
+  <div class="card">
+    <form method="post" action="{{ url_for(mode) }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required></div>
+      <div class="field"><label for="password">Password</label>
+        <input id="password" name="password" type="password" minlength="8" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}" required>
+        {% if mode == 'register' %}<small>At least 8 characters.</small>{% endif %}
+      </div>
+      <button class="primary" type="submit" style="width:100%;justify-content:center">{{ 'Create account' if mode == 'register' else 'Sign in' }} &rarr;</button>
+    </form>
+    <p class="auth-alt">
+      {% if mode == 'register' %}Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+      {% else %}New here? <a href="{{ url_for('register') }}">Create an account</a>{% endif %}
+    </p>
+  </div>
+</div>
+{% endblock %}

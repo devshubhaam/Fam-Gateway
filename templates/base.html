@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{{ brand }} - UPI payment verification & webhooks{% endblock %}</title>
+<meta name="description" content="{% block desc %}Create a UPI payment link, show a QR, and get a signed webhook when the money arrives.{% endblock %}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='design.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=1">
+{% block head %}{% endblock %}
+</head>
+<body class="{% block bodyclass %}inner{% endblock %}">
+<header class="nav nav-sticky">
+  <div class="shell nav-inner">
+    <a class="brand" href="{{ url_for('index') }}" style="padding:0"><span class="logo-mark">&#8377;</span>{{ brand }}</a>
+    <ul class="links">
+      <li><a href="{{ url_for('index') }}#flow">How it works</a></li>
+      <li><a href="{{ url_for('index') }}#api">API</a></li>
+      <li><a href="{{ url_for('docs') }}">Docs</a></li>
+    </ul>
+    <div class="nav-actions">
+      {% if me %}
+        <a class="login" href="{{ url_for('logout') }}">Sign out</a>
+        <a class="nav-cta" href="{{ url_for('dashboard') }}">Dashboard <span>&#8599;</span></a>
+      {% else %}
+        <a class="login" href="{{ url_for('login') }}">Sign in</a>
+        <a class="nav-cta" href="{{ url_for('register') }}">Get API key <span>&#8599;</span></a>
+      {% endif %}
+    </div>
+    <button class="menu" id="menu-btn" aria-label="Open menu" type="button">
+      <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+  </div>
+</header>
+<nav id="mobile-nav" class="mobile-nav">
+  <a href="{{ url_for('index') }}#flow">How it works</a>
+  <a href="{{ url_for('index') }}#api">API</a>
+  <a href="{{ url_for('docs') }}">Docs</a>
+  {% if me %}
+    <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('logout') }}">Sign out</a>
+  {% else %}
+    <a href="{{ url_for('login') }}">Sign in</a>
+    <a href="{{ url_for('register') }}">Get API key</a>
+  {% endif %}
+</nav>
+<div id="mobile-overlay" class="mobile-overlay"></div>
+
+<main>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}<div class="shell flash-wrap">{% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}</div>{% endif %}
+{% endwith %}
+{% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <div class="shell">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="{{ url_for('index') }}" style="padding:0;margin-bottom:14px;display:inline-flex"><span class="logo-mark">&#8377;</span>{{ brand }}</a>
+        <p>Non-custodial UPI payment verification and signed webhooks for developers. Payments go straight to your own UPI ID.</p>
+      </div>
+      <div>
+        <h3>Product</h3>
+        <a href="{{ url_for('docs') }}">API documentation</a>
+        <a href="{{ url_for('index') }}#flow">How it works</a>
+        <a href="{{ url_for('register') }}">Create account</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; {{ brand }}. All rights reserved.</p>
+      <p class="disclaimer"><strong>Disclaimer:</strong> {{ brand }} is an independent developer utility. It is not affiliated with, endorsed by, or sponsored by FamPay / FamApp, NPCI, or any bank. All product names and trademarks belong to their respective owners. You are responsible for using your UPI account in line with your bank's and UPI app's terms.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var btn = document.getElementById('menu-btn'), nav = document.getElementById('mobile-nav'), ov = document.getElementById('mobile-overlay');
+  function toggle(open) { nav.classList.toggle('open', open); ov.classList.toggle('open', open); }
+  if (btn) { btn.addEventListener('click', function () { toggle(!nav.classList.contains('open')); }); ov.addEventListener('click', function () { toggle(false); }); nav.addEventListener('click', function () { toggle(false); }); }
+  var els = document.querySelectorAll('.anim-fade-up,.anim-fade-in,.anim-slide-left,.anim-slide-right,.anim-stagger');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) { entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } }); }, { threshold: 0.12 });
+    els.forEach(function (el) { io.observe(el); });
+  } else { els.forEach(function (el) { el.classList.add('visible'); }); }
+})();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

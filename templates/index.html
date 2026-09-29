@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block bodyclass %}landing{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="shell hero-grid">
+    <div>
+      <div class="hero-eyebrow-wrap"><div class="eyebrow">
+        <svg class="hero-fampay-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        Non-custodial UPI verification &amp; webhooks</div></div>
+      <div class="hero-h1-wrap"><h1 style="font-size:clamp(40px,5vw,64px)">Know the moment a <em>UPI payment</em> lands.</h1></div>
+      <div class="hero-copy-wrap"><p class="hero-copy">Create a payment link, show a dynamic UPI QR, and get a signed webhook as soon as the credit is confirmed. Money goes straight to <b>your own UPI ID</b> &mdash; {{ brand }} never holds it.</p></div>
+      <div class="hero-actions-wrap"><div class="hero-actions">
+        <a class="primary" href="{{ url_for('register') }}">Create your account <span>&rarr;</span></a>
+        <a class="secondary" href="{{ url_for('docs') }}">Read the API docs <span>&#8599;</span></a>
+      </div></div>
+      <div class="hero-proof-wrap"><div class="proof">
+        <span><b>&#10003;</b> No fees from us</span><span><b>&#10003;</b> HMAC-signed webhooks</span><span><b>&#10003;</b> UTR de-duplication</span>
+      </div></div>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-card-wrap">
+        <div class="product">
+          <div class="product-head">
+            <div class="dots"><i></i><i></i><i></i></div><span>/pay/ord_8H2KQ</span><span>LIVE</span>
+          </div>
+          <div class="product-main">
+            <div class="gateway-brand"><span class="logo-mark">&#8377;</span><b>{{ brand }}</b></div>
+            <div class="product-label">Order total</div>
+            <div class="money">&#8377;499 <small>INR</small></div>
+            <div class="pay-card" style="text-align:left;padding:16px;border-radius:0;box-shadow:none;border:1px solid #dbeafe;background:#fff">
+              <div class="pay-row"><span>Order ID</span><b>ord_8H2KQ</b></div>
+              <div class="pay-row"><span>UPI payment link</span><b>Created</b></div>
+              <div class="pay-row"><span>Verification</span><span class="status"><i></i>Payment received</span></div>
+            </div>
+            <div class="flow">
+              <div>Link created</div><span>&rarr;</span>
+              <div>Pay with UPI</div><span>&rarr;</span>
+              <div class="active">Confirmed</div>
+            </div>
+          </div>
+          <div class="hero-note">Webhook sent &#10003;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="ticker"><div class="ticker-track shell"><span>UPI QR generation</span><span>Instant payment links</span><span>Signed webhooks</span><span>Hosted checkout</span><span>Idempotent by bank UTR</span></div></div>
+
+<section id="flow" class="section">
+  <div class="shell">
+    <div class="flow-intro">
+      <div class="anim-slide-left">
+        <div class="kicker">How it works</div>
+        <h2 style="font-size:clamp(30px,4vw,42px)">Payment confirmation from the receipt email.</h2>
+        <p class="section-intro">You connect a mailbox that receives your bank or UPI-app credit alerts. {{ brand }} reads new alerts, checks the sender, matches the exact amount to an open order, and fires your webhook.</p>
+      </div>
+      <div class="api-flow-card anim-slide-right"><b>YOUR APP &rarr; {{ brand|upper }}</b>
+        <div class="api-flow-line">
+          <div class="api-flow-node">API request<small>amount</small></div><span class="api-flow-arrow">&rarr;</span>
+          <div class="api-flow-node">QR response<small>order + QR URL</small></div><span class="api-flow-arrow">&rarr;</span>
+          <div class="api-flow-node">Webhook<small>paid + UTR</small></div>
+        </div>
+        <div class="api-flow-result">{ "event": "payment.success", "utr": "..." }</div>
+      </div>
+    </div>
+    <div class="steps anim-stagger">
+      <article class="step"><div class="step-no">01 / CONNECT</div><h3>Add your UPI ID and mailbox.</h3><p>Create an account, save your UPI ID, and connect the mailbox that receives credit alerts using an app password.</p></article>
+      <article class="step"><div class="step-no">02 / CREATE</div><h3>Generate a QR.</h3><p>Send an amount. The API returns an order ID, a QR URL, a hosted pay page and the exact payable amount.</p></article>
+      <article class="step"><div class="step-no">03 / CONFIRM</div><h3>Get the webhook.</h3><p>When the matching credit arrives you receive a signed callback. You can also poll the order status.</p></article>
+    </div>
+  </div>
+</section>
+
+<section id="api" class="section section-dark">
+  <div class="shell integration">
+    <div class="anim-slide-left">
+      <div class="kicker">Small API surface. Big control.</div>
+      <h2>Two calls. One clear answer.</h2>
+      <p class="section-intro">Create a payment session, then wait for the webhook or ask for its status. Everything is plain JSON.</p>
+      <div class="code">
+        <div class="code-top"><span>create-payment.sh</span><span>curl</span></div>
+        <pre><span class="dim"># create a payment</span>
+<span class="green">POST</span> /api/v1/orders
+<span class="orange">Authorization</span>: Bearer sk_live_...
+{ <span class="orange">"amount"</span>: 499, <span class="orange">"order_ref"</span>: "user42" }
+
+<span class="dim"># response</span>
+order_id, pay_url, qr_url, payable_amount</pre>
+      </div>
+    </div>
+    <div class="feature-list anim-stagger">
+      <div class="feature"><span class="feature-num" style="color:#60a5fa;font-weight:800">01</span><div><h3>Bank UTR idempotency</h3><p>Each UTR can settle only one payment, enforced by a unique database index.</p></div><span class="arrow">&#8599;</span></div>
+      <div class="feature"><span class="feature-num" style="color:#60a5fa;font-weight:800">02</span><div><h3>Unambiguous matching</h3><p>Two open orders never share a payable amount; a few paise are added only when needed.</p></div><span class="arrow">&#8599;</span></div>
+      <div class="feature"><span class="feature-num" style="color:#60a5fa;font-weight:800">03</span><div><h3>Hosted payment page</h3><p>Share a link with QR, UPI deep link, countdown and live status.</p></div><span class="arrow">&#8599;</span></div>
+      <div class="feature"><span class="feature-num" style="color:#60a5fa;font-weight:800">04</span><div><h3>Sender verification</h3><p>Emails must come from your allowed sender and pass DKIM/DMARC, so spoofed mails don't mark orders paid.</p></div><span class="arrow">&#8599;</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="shell">
+    <div class="checkout-showcase">
+      <div class="checkout-side anim-slide-left">
+        <div>
+          <div class="kicker">Checkout view</div>
+          <h2>Show the payment screen before the user pays.</h2>
+          <p class="section-intro">Exact amount, UPI destination, QR scan and a live waiting state, all on one screen.</p>
+        </div>
+        <div class="checkout-card"><h3>What the user sees</h3><p>The exact payable amount, who they are paying, a QR to scan, and a button that opens their UPI app on mobile. The page updates on its own when the payment is confirmed.</p></div>
+        <div class="checkout-metrics">
+          <div class="checkout-metric"><b>Amount</b><span>&#8377;100.00</span></div>
+          <div class="checkout-metric"><b>Status</b><span>Waiting</span></div>
+        </div>
+      </div>
+      <div class="checkout-panel" style="padding:22px">
+        <div style="width:100%;text-align:center">
+          <div class="product-label" style="color:#64748b">Pay Your Merchant</div>
+          <div class="money" style="margin:6px 0 14px">&#8377;100<small>.00</small></div>
+          <div class="mini-qr" style="max-width:220px;margin:0 auto"></div>
+          <div class="upi-line" style="margin-top:14px">merchant@upi</div>
+          <span class="status" style="margin-top:4px"><i></i>Waiting for payment</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-dark" style="padding:100px 0">
+  <div class="shell">
+    <div style="text-align:center;max-width:640px;margin:0 auto 56px">
+      <div class="kicker" style="margin-bottom:12px;display:inline-block">Why {{ brand }}?</div>
+      <h2 style="font-size:clamp(32px,5vw,46px);margin-bottom:18px;letter-spacing:-1px;margin-left:auto;margin-right:auto">Built for bots, side projects and small shops.</h2>
+      <p class="section-intro" style="font-size:17px;line-height:1.6;margin:0 auto">Automate UPI collection without wiring up a full payment-aggregator integration.</p>
+    </div>
+    <div class="why-grid anim-stagger">
+      <div class="why-card"><div class="ico" style="background:rgba(59,130,246,.15);color:#60a5fa">&#9889;</div><h3>Two API calls</h3><p>Create an order, then receive the webhook. Ideal for Telegram bots and small web apps.</p></div>
+      <div class="why-card"><div class="ico" style="background:rgba(34,197,94,.15);color:#4ade80">&#8377;</div><h3>Direct settlement</h3><p>Funds go straight to your UPI ID. {{ brand }} only reads the confirmation, it never touches the money.</p></div>
+      <div class="why-card"><div class="ico" style="background:rgba(244,63,94,.15);color:#fb7185">&#128274;</div><h3>Signed webhooks</h3><p>Every callback carries an HMAC-SHA256 signature and timestamp, with automatic retries.</p></div>
+      <div class="why-card"><div class="ico" style="background:rgba(168,85,247,.15);color:#c084fc">&#128231;</div><h3>Your mailbox, encrypted</h3><p>Mailbox app passwords are encrypted at rest and only used to read matching credit alerts.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-band">
+  <div class="shell cta-inner">
+    <div class="anim-slide-left" style="flex:1 1 400px;min-width:280px">
+      <h2 style="color:#fff;font-size:clamp(34px,5vw,54px);letter-spacing:-2px;margin:0 0 20px;line-height:1.1;font-weight:800">Ready to accept <br>UPI payments?</h2>
+      <p style="color:#94a3b8;font-size:16px;max-width:440px;margin:0 0 32px;line-height:1.7">Create an account, save your UPI ID, connect a mailbox, and make your first payment link in minutes.</p>
+      <div class="row">
+        <a class="primary" style="padding:15px 30px;border-radius:12px" href="{{ url_for('register') }}">Get your API key &rarr;</a>
+        <a class="secondary" style="padding:15px 26px;border-radius:12px" href="{{ url_for('docs') }}">Read docs</a>
+      </div>
+    </div>
+    <div class="cta-metrics anim-stagger">
+      <div class="cta-metric"><b>2</b><span>API calls to complete a payment</span></div>
+      <div class="cta-metric"><b>HMAC</b><span>Signed webhook callbacks</span></div>
+      <div class="cta-metric"><b>UTR</b><span>Idempotent settlement</span></div>
+      <div class="cta-metric" style="background:rgba(37,99,235,.15);border-color:rgba(37,99,235,.3)"><b style="color:#60a5fa">UPI</b><span style="color:#cbd5e1">Direct to your UPI ID</span></div>
+    </div>
+  </div>
+</section>
+{% endblock %}
