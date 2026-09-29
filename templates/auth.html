@@ -8,6 +8,13 @@
 <div class="shell auth-wrap">
   <div class="card">
     <form method="post" action="{{ url_for(mode) }}">
+      {% if google_enabled %}
+      <a class="primary" href="{{ url_for('google_start') }}" style="width:100%;justify-content:center;background:#fff;color:#1f2937;border:1px solid #d1d5db;margin-bottom:16px;box-sizing:border-box">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C.9 16.4 0 20.100 0 24s.9 7.600 2.600 10.800l7.800-6.100z"/><path fill="#34A853" d="M24 48c6.200 0 11.400-2 15.200-5.600l-7.500-5.800c-2.100 1.400-4.700 2.200-7.700 2.200-6.300 0-11.700-4.100-13.600-9.800l-7.800 6.100C6.500 42.600 14.600 48 24 48z"/></svg>
+        Continue with Google
+      </a>
+      <p style="text-align:center;margin:0 0 16px;opacity:.6;font-size:.85rem">or use email</p>
+      {% endif %}
       <input type="hidden" name="csrf" value="{{ csrf }}">
       <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" autocomplete="email" required></div>
       <div class="field"><label for="password">Password</label>
