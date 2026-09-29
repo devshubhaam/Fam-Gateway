@@ -1,0 +1,61 @@
+{% extends "dash_base.html" %}
+{% block title %}API Keys{% endblock %}
+{% block heading %}API Keys{% endblock %}
+{% block subheading %}Manage your authentication keys for API requests and integrations.{% endblock %}
+{% block content %}
+<div class="card" style="margin-top:20px;padding:40px">
+  <div class="integration-layout">
+    <div style="padding-top:10px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <div style="width:48px;height:48px;background:rgba(59,130,246,0.1);color:var(--color-primary);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ icon('key', 24) }}</div>
+        <h2 style="font-size:18px;font-weight:600;color:var(--color-ink);margin:0">Authentication</h2>
+      </div>
+      <p class="hide-on-mobile" style="font-size:14px;color:var(--color-ink-mute);line-height:1.6;margin-bottom:24px">Manage your authentication keys for API requests. Your active key below can be used to authenticate with our servers.</p>
+      <div class="hide-on-mobile" style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid var(--color-hairline)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="color:#ef4444;display:inline-flex">{{ icon('shield-alert', 16) }}</span><span style="font-size:13px;font-weight:600;color:var(--color-ink)">Keep Secret</span></div>
+        <p style="font-size:12px;color:var(--color-ink-mute);line-height:1.5;margin:0">Never expose your API keys in client-side code. Always use them securely on your backend server.</p>
+      </div>
+    </div>
+    <div style="margin:0;padding-top:10px;min-width:0">
+      <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--color-hairline)">
+        <div style="display:flex;align-items:center;gap:10px;font-weight:600;font-size:16px;color:var(--color-ink)">Your Active Keys</div>
+      </div>
+      <div style="margin-bottom:24px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;margin-left:2px"><span style="color:var(--color-ink-mute);display:inline-flex">{{ icon('key-round', 14) }}</span><span style="font-size:13px;font-weight:600;color:var(--color-ink)">Default Key</span></div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <input type="text" readonly class="form-input tnum" id="apiKeyText0" style="flex:1;min-width:340px;padding:12px 16px;background:var(--surface-page);color:var(--color-ink);font-weight:600;border-radius:var(--r-md)" value="{{ key if key else prefix ~ '…' }}">
+          {% if key %}<button type="button" class="btn btn-secondary" data-copy-from="apiKeyText0" data-copy-label="API key copied">{{ icon('copy', 14) }} Copy</button>{% endif %}
+          <form method="post" action="{{ url_for('regenerate_api_key') }}" class="inline-form">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <button type="submit" class="btn btn-danger" data-confirm="Generate a new API key? The current key stops working immediately.">{{ icon('refresh', 14) }} Generate New</button>
+          </form>
+        </div>
+        {% if not key %}<p style="font-size:12px;color:var(--color-ink-mute);margin:10px 0 0;line-height:1.5">This key was created before keys could be shown here, so only its first characters are available. Generate a new key to see and copy the full value.</p>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:40px">
+  <div style="margin-bottom:20px">
+    <h2 style="font-size:18px;font-weight:600;color:var(--color-ink);display:flex;align-items:center;gap:8px"><span style="color:var(--color-primary);display:inline-flex">{{ icon('terminal', 20) }}</span> Integration Example</h2>
+    <p style="font-size:14px;color:var(--color-ink-mute);margin-top:6px">Use this snippet to quickly generate secure checkout links from your backend.</p>
+  </div>
+  <div style="background:#0f172a;border-radius:12px;overflow:hidden;border:1px solid #334155;box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);display:flex;flex-direction:column">
+    <div style="background:#1e293b;padding:12px 16px;display:flex;align-items:center;border-bottom:1px solid #334155">
+      <div style="display:flex;gap:6px"><div style="width:12px;height:12px;border-radius:50%;background:#ef4444"></div><div style="width:12px;height:12px;border-radius:50%;background:#f59e0b"></div><div style="width:12px;height:12px;border-radius:50%;background:#10b981"></div></div>
+      <div style="margin-left:auto;display:flex;gap:8px"><span style="font-size:12px;color:#94a3b8;font-family:monospace;background:#334155;padding:4px 10px;border-radius:4px">cURL</span></div>
+    </div>
+    <div style="padding:24px;position:relative;background:#0f172a;flex:1">
+      <button type="button" class="btn btn-secondary" data-copy-from="codeSnippet" data-copy-label="Snippet copied" style="position:absolute;top:16px;right:16px;font-size:11px;padding:6px 12px;background:rgba(255,255,255,0.05);color:#e2e8f0;border:1px solid rgba(255,255,255,0.1);box-shadow:none">{{ icon('copy', 12) }} Copy</button>
+      <pre id="codeSnippet" style="margin:0;color:#f8fafc;font-family:monospace;font-size:13px;overflow-x:auto;white-space:pre;line-height:1.6">curl -X POST {{ base }}/api/v1/orders \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "amount": 500.00,
+    "redirect_url": "https://your-website.com/success"
+  }'</pre>
+    </div>
+  </div>
+</div>
+{% endblock %}
