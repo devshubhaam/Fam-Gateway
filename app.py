@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 import os
 import re
@@ -184,6 +185,7 @@ def create_merchant(email: str, password_hash: str):
         "upi_id": "", "payee_name": "", "webhook_url": "",
         "api_key_hash": security.hash_api_key(api_key),
         "api_key_prefix": api_key[:12],
+        "api_key_enc": security.encrypt(api_key),
         "webhook_secret_enc": security.encrypt(security.new_webhook_secret()),
         "imap": {"enabled": False, "host": "imap.gmail.com", "port": 993, "user": "",
                  "password_enc": None, "allowed_senders": [], "require_auth": True},
@@ -492,7 +494,8 @@ def regenerate_key():
     m = current_merchant()
     key = security.new_api_key()
     get_db().merchants.update_one({"_id": m["_id"]}, {"$set": {
-        "api_key_hash": security.hash_api_key(key), "api_key_prefix": key[:12]}})
+        "api_key_hash": security.hash_api_key(key), "api_key_prefix": key[:12],
+        "api_key_enc": security.encrypt(key)}})
     session["new_api_key"] = key
     return redirect(url_for("dashboard"))
 
@@ -510,6 +513,338 @@ def test_order():
     return redirect(url_for("pay", order_id=order["order_id"]))
 
 
+# ---------------------------------------------------------------- dashboard pages
+IST = timedelta(hours=5, minutes=30)
+
+
+def _ist(value):
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=services.utcnow().tzinfo)
+    return value + IST
+
+
+@app.template_filter("ist")
+def fmt_ist(value):
+    d = _ist(value)
+    if not d:
+        return "-"
+    return f"{d:%a %b} {d.day}, {d.hour % 12 or 12}:{d:%M}{'am' if d.hour < 12 else 'pm'}"
+
+
+@app.template_filter("istlong")
+def fmt_ist_long(value):
+    d = _ist(value)
+    return f"{d:%b} {d.day}, {d:%Y} \u00b7 {d:%I:%M %p}" if d else "-"
+
+
+@app.template_filter("istlog")
+def fmt_ist_log(value):
+    d = _ist(value)
+    return f"{d.day} {d:%b %Y}, {d:%I:%M %p}" if d else "-"
+
+
+def _status_key(order: dict) -> str:
+    return effective_status(order)
+
+
+def _int_arg(name, default, allowed=None, minimum=1):
+    try:
+        v = int(request.args.get(name, default))
+    except (TypeError, ValueError):
+        return default
+    if allowed is not None and v not in allowed:
+        return default
+    return max(v, minimum)
+
+
+def _left(order: dict) -> str:
+    secs = int((order["expires_at"] - services.utcnow()).total_seconds())
+    if secs <= 0:
+        return "Expired"
+    h, rem = divmod(secs, 3600)
+    mnt = rem // 60
+    if h:
+        return f"{h}h {mnt}m left"
+    return f"{mnt}m {rem % 60}s left" if mnt < 5 else f"{mnt}m left"
+
+
+# ---- Transactions
+TX_TABS = {"all": None, "created": "pending", "captured": "paid", "expired": "expired", "failed": "cancelled"}
+TX_DATES = ("all", "today", "yesterday", "7days", "30days", "this_month", "last_month")
+
+
+def _date_range(key):
+    """Returns (start, end) in UTC for a filter key; None means unbounded."""
+    now = services.utcnow()
+    ist_now = now + IST
+    t0 = ist_now.replace(hour=0, minute=0, second=0, microsecond=0) - IST
+    if key == "today":
+        return t0, None
+    if key == "yesterday":
+        return t0 - timedelta(days=1), t0
+    if key == "7days":
+        return now - timedelta(days=7), None
+    if key == "30days":
+        return now - timedelta(days=30), None
+    m0 = ist_now.replace(day=1, hour=0, minute=0, second=0, microsecond=0) - IST
+    if key == "this_month":
+        return m0, None
+    if key == "last_month":
+        prev = (ist_now.replace(day=1) - timedelta(days=1)).replace(day=1, hour=0, minute=0, second=0, microsecond=0) - IST
+        return prev, m0
+    return None, None
+
+
+@app.get("/transactions")
+@login_required
+def transactions():
+    db, m = get_db(), current_merchant()
+    services.sweep_expired(db, m["_id"])
+    everything = list(db.orders.find({"merchant_id": m["_id"]}).sort("created_at", -1).limit(5000))
+    counts = {"pending": 0, "paid": 0, "expired": 0, "cancelled": 0}
+    collected = 0
+    for o in everything:
+        st = _status_key(o)
+        counts[st] = counts.get(st, 0) + 1
+        if st == "paid":
+            collected += int(o.get("payable_paise") or 0)
+
+    tab = request.args.get("status", "all")
+    tab = tab if tab in TX_TABS else "all"
+    date_key = request.args.get("date", "30days")
+    date_key = date_key if date_key in TX_DATES else "30days"
+    limit = _int_arg("limit", 25, (10, 25, 50, 100))
+    q = request.args.get("q", "").strip().lower()[:60]
+    page = _int_arg("page", 1)
+
+    start, end = _date_range(date_key)
+    rows = []
+    for o in everything:
+        if TX_TABS[tab] and _status_key(o) != TX_TABS[tab]:
+            continue
+        if start and o["created_at"] < start:
+            continue
+        if end and o["created_at"] >= end:
+            continue
+        if q and q not in o["order_id"].lower() and q not in (o.get("utr") or "").lower():
+            continue
+        rows.append(o)
+    total = len(rows)
+    pages = max(1, -(-total // limit))
+    page = min(page, pages)
+    view = rows[(page - 1) * limit: page * limit]
+    qs = {"status": tab, "date": date_key, "limit": limit, "q": q}
+    return render_template(
+        "transactions.html", active="transactions", rows=view, total=total, page=page, pages=pages,
+        limit=limit, tab=tab, date_key=date_key, q=q, qs=qs, counts=counts, collected=collected,
+        paid_count=counts["paid"], fmt=services.fmt_amount, status_of=_status_key)
+
+
+@app.get("/transactions/<order_id>")
+@login_required
+def transaction_detail(order_id):
+    db, m = get_db(), current_merchant()
+    order = db.orders.find_one({"order_id": order_id, "merchant_id": m["_id"]})
+    if not order:
+        abort(404)
+    deliveries = list(db.deliveries.find({"merchant_id": m["_id"], "order_id": order_id}).sort("created_at", -1))
+    return render_template("transaction_detail.html", active="transactions", o=order,
+                           status=_status_key(order), deliveries=deliveries, fmt=services.fmt_amount,
+                           pay_url=f"{base_url()}/pay/{order_id}")
+
+
+# ---- Payment links
+LINK_EXPIRY = {"1m": 60, "5m": 300, "30m": 1800, "1h": 3600, "2h": 7200, "24h": 86400}
+
+
+@app.get("/payment-links")
+@login_required
+def payment_links():
+    db, m = get_db(), current_merchant()
+    services.sweep_expired(db, m["_id"])
+    links = list(db.orders.find({"merchant_id": m["_id"], "source": "link"}).sort("created_at", -1).limit(100))
+    new_id = request.args.get("new", "")
+    new_link = next((o for o in links if o["order_id"] == new_id), None)
+    return render_template("payment_links.html", active="links", links=links, new_link=new_link,
+                           base=base_url(), fmt=services.fmt_amount, status_of=_status_key, left=_left,
+                           has_upi=bool(m.get("upi_id")))
+
+
+@app.post("/payment-links")
+@login_required
+def create_payment_link():
+    m = current_merchant()
+    expiry = LINK_EXPIRY.get(request.form.get("expiry", "24h"), 86400)
+    try:
+        order, _ = services.create_order(get_db(), m, parse_amount(request.form.get("amount", "")),
+                                         expires_in=expiry, source="link")
+    except services.OrderError as exc:
+        flash(str(exc), "error")
+        return redirect(url_for("payment_links"))
+    return redirect(url_for("payment_links", new=order["order_id"]))
+
+
+def _close_link(order_id: str, new_status: str, message: str):
+    now = services.utcnow()
+    res = get_db().orders.update_one(
+        {"order_id": order_id, "merchant_id": current_merchant()["_id"], "source": "link", "status": "pending"},
+        {"$set": {"status": new_status, "expires_at": now, "grace_until": now}})
+    if res.modified_count:
+        flash(message, "ok")
+    else:
+        flash("That link is no longer active.", "error")
+    return redirect(url_for("payment_links"))
+
+
+@app.post("/payment-links/<order_id>/expire")
+@login_required
+def expire_payment_link(order_id):
+    return _close_link(order_id, "expired", "Link expired.")
+
+
+@app.post("/payment-links/<order_id>/disable")
+@login_required
+def disable_payment_link(order_id):
+    return _close_link(order_id, "cancelled", "Link disabled.")
+
+
+# ---- API keys
+@app.get("/api-keys")
+@login_required
+def api_keys():
+    m = current_merchant()
+    key = None
+    if m.get("api_key_enc"):
+        try:
+            key = security.decrypt(m["api_key_enc"])
+        except ValueError:
+            key = None
+    return render_template("api_keys.html", active="keys", key=key, prefix=m.get("api_key_prefix", ""),
+                           base=base_url())
+
+
+@app.post("/api-keys/regenerate")
+@login_required
+def regenerate_api_key():
+    m = current_merchant()
+    key = security.new_api_key()
+    get_db().merchants.update_one({"_id": m["_id"]}, {"$set": {
+        "api_key_hash": security.hash_api_key(key), "api_key_prefix": key[:12],
+        "api_key_enc": security.encrypt(key)}})
+    flash("New API key generated. The old key has stopped working.", "ok")
+    return redirect(url_for("api_keys"))
+
+
+# ---- Webhooks
+MAX_ENDPOINTS = 10
+LOG_FILTERS = ("all", "success", "failed")
+
+
+def _pretty(text):
+    try:
+        return json.dumps(json.loads(text), indent=2)
+    except (TypeError, ValueError):
+        return text or ""
+
+
+def _log_view(d: dict) -> dict:
+    st = d.get("status")
+    code = d.get("last_status")
+    if st == "done":
+        kind, label = "success", f"HTTP {code}" if code else "Delivered"
+    elif st == "failed":
+        kind, label = "failed", f"HTTP {code}" if code else "Failed"
+    else:
+        kind, label = "pending", "Retrying" if d.get("attempts") else "Queued"
+    return {
+        "did": d.get("did") or "", "created": d.get("created_at"), "url": d.get("url"),
+        "name": d.get("endpoint_name") or "Endpoint", "kind": kind, "label": label,
+        "attempts": d.get("attempts", 0), "error": d.get("last_error"), "order_id": d.get("order_id"),
+        "payload": _pretty(d.get("body")), "response": d.get("last_response") or "",
+        "last_attempt": d.get("last_attempt_at"),
+    }
+
+
+@app.get("/webhooks")
+@login_required
+def webhooks_page():
+    db, m = get_db(), current_merchant()
+    endpoints = list(db.webhook_endpoints.find({"merchant_id": m["_id"]}).sort("created_at", -1))
+    logs_all = [_log_view(d) for d in db.deliveries.find({"merchant_id": m["_id"]}).sort("created_at", -1).limit(1000)]
+    counts = {"all": len(logs_all),
+              "success": sum(1 for x in logs_all if x["kind"] == "success"),
+              "failed": sum(1 for x in logs_all if x["kind"] == "failed")}
+    flt = request.args.get("filter", "all")
+    flt = flt if flt in LOG_FILTERS else "all"
+    logs = logs_all if flt == "all" else [x for x in logs_all if x["kind"] == flt]
+    per = 10
+    total = len(logs)
+    pages = max(1, -(-total // per))
+    page = min(_int_arg("page", 1), pages)
+    view = logs[(page - 1) * per: page * per]
+    try:
+        secret = security.decrypt(m["webhook_secret_enc"])
+    except ValueError:
+        secret = "(unreadable - SECRET_KEY changed)"
+    logs_js = [{"did": x["did"], "name": x["name"], "url": x["url"], "label": x["label"], "kind": x["kind"],
+                "attempts": x["attempts"], "error": x["error"] or "", "order_id": x["order_id"] or "",
+                "payload": x["payload"], "response": x["response"],
+                "when": fmt_ist_log(x["created"]), "last": fmt_ist_log(x["last_attempt"])} for x in view]
+    return render_template(
+        "webhooks.html", active="webhooks", logs_js=logs_js, endpoints=endpoints, default_url=m.get("webhook_url", ""),
+        logs=view, counts=counts, flt=flt, page=page, pages=pages, total=total, per=per,
+        first=(page - 1) * per + 1 if total else 0, last=min(page * per, total), secret=secret)
+
+
+@app.post("/webhooks/endpoints")
+@login_required
+def add_webhook_endpoint():
+    db, m = get_db(), current_merchant()
+    name = request.form.get("endpoint_name", "").strip()[:40]
+    url = request.form.get("endpoint_url", "").strip()
+    if not name or not url:
+        flash("Enter a label and a URL for the endpoint.", "error")
+    elif db.webhook_endpoints.count_documents({"merchant_id": m["_id"]}) >= MAX_ENDPOINTS:
+        flash(f"You can add up to {MAX_ENDPOINTS} endpoints. Delete one first.", "error")
+    elif any(e.get("url") == url for e in db.webhook_endpoints.find({"merchant_id": m["_id"]})):
+        flash("That URL is already added.", "error")
+    else:
+        ok, reason = security.is_safe_webhook_url(url)
+        if not ok:
+            flash(reason, "error")
+        else:
+            db.webhook_endpoints.insert_one({
+                "eid": secrets.token_hex(6), "merchant_id": m["_id"], "name": name, "url": url,
+                "active": True, "created_at": services.utcnow()})
+            flash("Webhook endpoint added.", "ok")
+    return redirect(url_for("webhooks_page"))
+
+
+@app.post("/webhooks/endpoints/<eid>/delete")
+@login_required
+def delete_webhook_endpoint(eid):
+    db, m = get_db(), current_merchant()
+    ep = db.webhook_endpoints.find_one({"eid": eid, "merchant_id": m["_id"]})
+    if ep:
+        db.webhook_endpoints.delete_one({"_id": ep["_id"]})
+        flash("Webhook endpoint removed.", "ok")
+    return redirect(url_for("webhooks_page"))
+
+
+@app.post("/webhooks/logs/<did>/retry")
+@login_required
+def retry_delivery(did):
+    db, m = get_db(), current_merchant()
+    res = db.deliveries.update_one(
+        {"did": did, "merchant_id": m["_id"], "status": "failed"},
+        {"$set": {"status": "pending", "attempts": 0, "next_attempt": services.utcnow()}})
+    flash("Delivery queued again." if res.modified_count else "That delivery cannot be retried.",
+          "ok" if res.modified_count else "error")
+    return redirect(url_for("webhooks_page", filter="all"))
+
+
 # ---------------------------------------------------------------- checkout
 def _order_or_404(order_id: str):
     order = get_db().orders.find_one({"order_id": order_id})
@@ -522,15 +857,17 @@ def _order_or_404(order_id: str):
 @app.get("/pay/<order_id>")
 def pay(order_id):
     merchant, order = _order_or_404(order_id)
+    status = effective_status(order)
     return render_template("pay.html", merchant=merchant, order=order,
-                           status=effective_status(order), fmt=services.fmt_amount,
+                           status="expired" if status == "cancelled" else status, fmt=services.fmt_amount,
                            link=services.upi_link(merchant, order))
 
 
 @app.get("/api/public/orders/<order_id>")
 def public_status(order_id):
     _, order = _order_or_404(order_id)
-    return jsonify(status=effective_status(order),
+    st = effective_status(order)
+    return jsonify(status="expired" if st == "cancelled" else st,
                    redirect_url=order.get("redirect_url") if order["status"] == "paid" else None)
 
 
