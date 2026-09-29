@@ -220,6 +220,19 @@ def login():
             flash("Too many attempts. Try again in a few minutes.", "error")
             return render_template("auth.html", mode="login"), 429
         email = request.form.get("email", "").strip().lower()
+        pw = request.form.get("password", "")
+        admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+        admin_pw = os.environ.get("ADMIN_PASSWORD", "")
+        if admin_email and admin_pw and security.safe_equals(email, admin_email) and security.safe_equals(pw, admin_pw):
+            merchant = get_db().merchants.find_one({"email": email})
+            api_key = None
+            if not merchant:
+                merchant, api_key = create_merchant(email, generate_password_hash(admin_pw))
+            session.clear()
+            session["mid"] = merchant["_id"]
+            if api_key:
+                session["new_api_key"] = api_key
+            return redirect(url_for("dashboard"))
         merchant = get_db().merchants.find_one({"email": email})
         if merchant and merchant.get("password_hash") and check_password_hash(merchant["password_hash"], request.form.get("password", "")):
             session.clear()
@@ -356,13 +369,21 @@ def dashboard():
     payments = list(db.payments.find({"merchant_id": m["_id"]}).sort("created_at", -1).limit(10))
     emails = list(db.email_log.find({"merchant_id": m["_id"]}).sort("created_at", -1).limit(12))
     failed = db.deliveries.count_documents({"merchant_id": m["_id"], "status": "failed"})
+    stats = {"total": 0, "paid": 0, "other": 0, "revenue_paise": 0}
+    for o in db.orders.find({"merchant_id": m["_id"]}).limit(5000):
+        stats["total"] += 1
+        if effective_status(o) == "paid":
+            stats["paid"] += 1
+            stats["revenue_paise"] += int(o.get("payable_paise") or 0)
+        else:
+            stats["other"] += 1
     try:
         webhook_secret = security.decrypt(m["webhook_secret_enc"])
     except ValueError:
         webhook_secret = "(unreadable - SECRET_KEY changed)"
     return render_template(
         "dashboard.html", m=m, orders=orders, payments=payments, emails=emails,
-        failed_webhooks=failed, webhook_secret=webhook_secret,
+        failed_webhooks=failed, webhook_secret=webhook_secret, stats=stats,
         new_api_key=session.pop("new_api_key", None), fmt=services.fmt_amount,
         status_of=effective_status)
 
