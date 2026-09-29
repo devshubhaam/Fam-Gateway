@@ -1,0 +1,52 @@
+{% extends "dash_base.html" %}
+{% block title %}Transaction {{ o.order_id }}{% endblock %}
+{% block heading %}Transaction details{% endblock %}
+{% block subheading %}<a href="{{ url_for('transactions') }}" style="color:var(--color-primary);text-decoration:none">&larr; Back to transactions</a>{% endblock %}
+{% block content %}
+<div class="card" style="padding:24px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:8px">
+    <div>
+      <div style="font-size:12px;color:var(--color-ink-mute)">{{ 'Amount paid' if status == 'paid' else 'Amount' }}</div>
+      <div style="font-size:30px;font-weight:700;color:var(--color-ink);margin-top:4px">&#8377;{{ fmt(o.payable_paise) }}</div>
+    </div>
+    {% if status == 'paid' %}<span class="status-badge status-success">{{ icon('check', 12) }} Captured{{ ' (late)' if o.paid_late }}</span>
+    {% elif status == 'pending' %}<span class="status-badge status-pending">{{ icon('clock', 12) }} Created</span>
+    {% elif status == 'cancelled' %}<span class="status-badge status-failed">{{ icon('ban', 12) }} Failed &middot; link disabled</span>
+    {% else %}<span class="status-badge status-expired">{{ icon('clock', 12) }} Expired</span>{% endif %}
+  </div>
+  <div class="dl-row"><span>Order ID</span><span>{{ o.order_id }}</span></div>
+  <div class="dl-row"><span>Bank RRN / UTR</span><span>{{ o.utr or '--' }}</span></div>
+  <div class="dl-row"><span>Reference</span><span>{{ o.order_ref or '-' }}</span></div>
+  <div class="dl-row"><span>Requested amount</span><span>&#8377;{{ fmt(o.amount_paise) }}</span></div>
+  <div class="dl-row"><span>Created</span><span>{{ o.created_at | istlong }}</span></div>
+  <div class="dl-row"><span>Expires</span><span>{{ o.expires_at | istlong }}</span></div>
+  <div class="dl-row"><span>Paid at</span><span>{{ (o.paid_at | istlong) if o.paid_at else '-' }}</span></div>
+  <div class="dl-row"><span>Source</span><span>{{ 'Payment link' if o.source == 'link' else ('Test order' if o.note == 'test order' else 'API') }}</span></div>
+  <div class="dl-row"><span>Checkout link</span><span><a href="{{ pay_url }}" target="_blank" rel="noopener" style="color:var(--color-primary)">{{ pay_url }}</a> <button type="button" class="btn btn-secondary btn-sm" data-copy="{{ pay_url }}" data-copy-label="Link copied" style="margin-left:6px">{{ icon('copy', 12) }} Copy</button></span></div>
+</div>
+
+<div class="card" style="padding:0;overflow:hidden">
+  <div style="padding:20px 24px;border-bottom:1px solid var(--color-hairline)">
+    <div class="card-title" style="justify-content:flex-start!important"><span style="color:var(--color-primary);display:inline-flex">{{ icon('send', 18) }}</span> Webhook deliveries</div>
+    <div class="card-sub">Notifications sent for this payment.</div>
+  </div>
+  <div class="table-responsive">
+    <table class="tx-table" style="min-width:560px">
+      <thead><tr><th>Sent to</th><th>Attempts</th><th>Status</th><th>Last attempt</th></tr></thead>
+      <tbody>
+      {% for d in deliveries %}
+      <tr>
+        <td><div style="font-weight:600">{{ d.endpoint_name or 'Endpoint' }}</div><div style="font-size:12px;font-family:monospace;color:var(--color-ink-mute);word-break:break-all">{{ d.url }}</div></td>
+        <td>{{ d.attempts }}</td>
+        <td>{% if d.status == 'done' %}<span class="status-badge status-success">{{ icon('check', 12) }} HTTP {{ d.last_status or 200 }}</span>
+            {% elif d.status == 'failed' %}<span class="status-badge status-failed">{{ icon('ban', 12) }} Failed</span>
+            {% else %}<span class="status-badge status-pending">{{ icon('clock', 12) }} Retrying</span>{% endif %}
+            {% if d.last_error %}<div style="font-size:11px;color:var(--color-ink-mute);margin-top:4px">{{ d.last_error }}</div>{% endif %}</td>
+        <td>{{ d.last_attempt_at | istlog if d.last_attempt_at else '-' }}</td>
+      </tr>
+      {% else %}<tr><td colspan="4"><div class="empty-row">No webhook was sent for this payment.</div></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
