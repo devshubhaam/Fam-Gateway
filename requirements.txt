@@ -1,0 +1,7 @@
+Flask==3.1.*
+gunicorn==23.*
+pymongo==4.*
+requests==2.*
+cryptography>=43
+segno==1.6.*
+pillow>=10
