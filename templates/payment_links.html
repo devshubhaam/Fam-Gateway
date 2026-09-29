@@ -1,0 +1,71 @@
+{% extends "dash_base.html" %}
+{% block title %}Payment Links{% endblock %}
+{% block heading %}Payment Links{% endblock %}
+{% block subheading %}Create and manage checkout URLs to share with your customers.{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header" style="margin-bottom:16px">
+    <div class="card-title" style="justify-content:flex-start!important"><span style="color:var(--color-primary);display:inline-flex">{{ icon('link', 18) }}</span> <span>Generate Payment Link</span></div>
+    <div class="card-sub">Create an instant checkout link with auto-generated ID to share with your customers.</div>
+  </div>
+  {% if not has_upi %}<div class="fg-flash error" style="max-width:480px">Save your UPI ID in <a href="{{ url_for('dashboard') }}#settings" style="color:inherit;text-decoration:underline">Payment settings</a> before creating a link.</div>{% endif %}
+  <form method="post" action="{{ url_for('create_payment_link') }}" class="generate-link-form">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="input-currency-box">
+      <span class="currency-sym">&#8377;</span>
+      <input type="number" name="amount" id="linkAmount" class="form-input" placeholder="Amount (e.g. 499)" step="0.01" min="1" required>
+    </div>
+    <select name="expiry" id="linkExpiry" class="form-input" style="width:120px;margin-bottom:0;flex-shrink:0">
+      <option value="1m">1 Min</option><option value="5m">5 Mins</option><option value="30m">30 Mins</option>
+      <option value="1h">1 Hour</option><option value="2h">2 Hours</option><option value="24h" selected>1 Day</option>
+    </select>
+    <button type="submit" class="btn btn-primary" style="margin-top:0;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;flex-shrink:0">{{ icon('plus', 15) }} Generate</button>
+  </form>
+  {% if new_link %}
+  <div id="generatedLinkRow" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:20px;padding:14px 18px;border:1px solid var(--blue-200);background:var(--blue-50);border-radius:var(--r-md)">
+    <input type="text" readonly id="generatedUrl" class="form-input" style="flex:1;min-width:220px;background:#fff" value="{{ base }}/pay/{{ new_link.order_id }}">
+    <button type="button" class="btn btn-secondary" data-copy-from="generatedUrl" data-copy-label="Link copied">{{ icon('copy', 14) }} Copy</button>
+    <a class="btn btn-secondary" href="{{ url_for('pay', order_id=new_link.order_id) }}" target="_blank" rel="noopener">Open</a>
+  </div>
+  {% if new_link.payable_paise != new_link.amount_paise %}<p style="font-size:12px;color:var(--color-ink-mute);margin:10px 2px 0">Customer pays &#8377;{{ fmt(new_link.payable_paise) }}. The few extra paise let us match the payment to this link.</p>{% endif %}
+  {% endif %}
+</div>
+
+<div class="card" style="padding:0;overflow:hidden">
+  <div style="padding:22px 28px;border-bottom:1px solid var(--color-hairline)">
+    <div class="card-title" style="justify-content:flex-start!important"><span style="color:var(--color-primary);display:inline-flex">{{ icon('list', 18) }}</span> <span>My Payment Links</span></div>
+    <div class="card-sub">Manage your active and expired payment links.</div>
+  </div>
+  <div class="table-responsive" id="linksTableContainer" style="margin:0;border-top:none">
+    <table class="tx-table">
+      <thead><tr><th>Link (Slug)</th><th>Amount</th><th>Status</th><th>Created</th><th>Expires</th><th style="text-align:right">Actions</th></tr></thead>
+      <tbody>
+      {% for o in links %}{% set st = status_of(o) %}
+      <tr>
+        <td>
+          <span style="font-weight:600;color:var(--color-ink);font-size:13.5px">{{ o.order_id }}</span>
+          <code style="font-size:11px;color:var(--color-ink-mute);background:var(--surface-page);padding:2px 7px;border-radius:5px;border:1px solid var(--color-hairline);margin-left:8px">/pay/{{ o.order_id }}</code>
+        </td>
+        <td class="tnum" style="font-weight:600;color:var(--color-ink);font-size:14px">&#8377;{{ fmt(o.amount_paise) }}{% if o.payable_paise != o.amount_paise %}<div style="font-size:11px;font-weight:400;color:var(--color-ink-mute)">pays &#8377;{{ fmt(o.payable_paise) }}</div>{% endif %}</td>
+        <td>{% if st == 'paid' %}<span class="status-badge status-success">{{ icon('check', 12) }} Paid</span>
+            {% elif st == 'pending' %}<span class="status-badge status-pending">{{ icon('clock', 12) }} Pending</span>
+            {% elif st == 'cancelled' %}<span class="status-badge status-failed">{{ icon('ban', 12) }} Disabled</span>
+            {% else %}<span class="status-badge status-expired">{{ icon('clock', 12) }} Expired</span>{% endif %}</td>
+        <td class="tnum" style="color:var(--color-ink-secondary);font-size:12.5px">{{ o.created_at | istlong }}</td>
+        <td class="tnum" style="font-size:12.5px">{% if st == 'pending' %}<span style="color:var(--color-warning-text);font-weight:600" title="Expires: {{ o.expires_at | istlong }}">{{ left(o) }}</span>{% else %}<span style="color:var(--color-ink-mute)">&mdash;</span>{% endif %}</td>
+        <td><div class="link-actions">
+          <button type="button" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:4px" data-copy="{{ base }}/pay/{{ o.order_id }}" data-copy-label="Link copied">{{ icon('copy', 13) }} Copy</button>
+          {% if st == 'pending' %}
+          <form method="post" action="{{ url_for('expire_payment_link', order_id=o.order_id) }}" class="inline-form"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit" class="btn btn-secondary btn-sm" style="color:var(--color-warning-text);display:inline-flex;align-items:center;gap:4px" data-confirm="Expire this link now?">{{ icon('clock', 13) }} Expire</button></form>
+          <form method="post" action="{{ url_for('disable_payment_link', order_id=o.order_id) }}" class="inline-form"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit" class="btn btn-danger btn-sm" style="display:inline-flex;align-items:center;gap:4px" data-confirm="Disable this link? Customers will no longer be able to pay it.">{{ icon('ban', 13) }} Disable</button></form>
+          {% else %}
+          <a href="{{ url_for('transaction_detail', order_id=o.order_id) }}" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:4px;color:var(--color-primary)">{{ icon('eye', 13) }} Details</a>
+          {% endif %}
+        </div></td>
+      </tr>
+      {% else %}<tr><td colspan="6"><div class="empty-row">No payment links yet. Generate your first link above.</div></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
