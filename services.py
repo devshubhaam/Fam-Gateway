@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -8,6 +9,14 @@ from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from security import new_order_id
+
+try:
+    from famway_mailer import famway_mail_async
+except ImportError:  # mailer file missing: payments still work, just no emails
+    def famway_mail_async(*_args, **_kwargs):
+        return None
+
+log = logging.getLogger("services")
 
 
 def utcnow() -> datetime:
@@ -147,6 +156,26 @@ def queue_webhook(db, merchant: dict, order: dict):
         })
 
 
+def notify_payment_received(merchant: dict, order: dict) -> None:
+    """Email the merchant that a payment arrived. Never raises: a mail problem must not affect settlement."""
+    try:
+        site = os.environ.get("BASE_URL", "https://famgateway.in").rstrip("/")
+        ist = (order.get("paid_at") or utcnow()) + timedelta(hours=5, minutes=30)
+        when = f"{ist.day} {ist:%b %Y}, {ist:%I:%M %p} IST"
+        name = (merchant.get("full_name") or merchant.get("payee_name")
+                or merchant["email"].split("@")[0])
+        famway_mail_async("payment_received", merchant["email"], name, {
+            "amount": "\u20b9" + fmt_amount(order["payable_paise"]),
+            "order_id": order["order_id"],
+            "utr": order.get("utr") or "-",
+            "payer_upi": "Not available",
+            "time": when,
+            "transaction_url": f"{site}/transactions/{order['order_id']}",
+        })
+    except Exception:  # noqa: BLE001
+        log.exception("payment_received mail could not be queued")
+
+
 def settle_payment(db, merchant: dict, amount_paise: int, utr: str, received_at: datetime,
                    source: str = "email") -> str:
     """Record an incoming credit and match it to an order.
@@ -184,4 +213,5 @@ def settle_payment(db, merchant: dict, amount_paise: int, utr: str, received_at:
     db.payments.update_one({"merchant_id": mid, "utr": utr},
                            {"$set": {"status": outcome, "order_id": order["order_id"]}})
     queue_webhook(db, merchant, order)
+    notify_payment_received(merchant, order)
     return outcome
