@@ -115,6 +115,13 @@ class Collection:
         self._check_unique(new, ignore=doc)
         doc.update(update.get("$set", {}))
 
+    def delete_one(self, query):
+        for i, d in enumerate(self.docs):
+            if _match(d, query):
+                del self.docs[i]
+                return Result(1)
+        return Result(0)
+
     def update_one(self, query, update):
         for d in self.docs:
             if _match(d, query):
