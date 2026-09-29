@@ -1,14 +1,80 @@
-{% extends "base.html" %}
-{% block title %}Dashboard - {{ brand }}{% endblock %}
-{% block content %}
-<section class="page-head"><div class="shell">
-  <div class="eyebrow">Dashboard</div>
-  <h1>Payments &amp; setup</h1>
-  <p>{{ m.email }} &middot; times shown in UTC</p>
-</div></section>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Dashboard - {{ brand }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='design.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=1">
+<link rel="stylesheet" href="{{ url_for('static', filename='dash.css') }}?v=1">
+</head>
+<body>
+<div class="dashboard-layout">
+  <div class="mobile-header">
+    <a class="dash-brand" href="{{ url_for('dashboard') }}"><span class="logo-mark">&#8377;</span>{{ brand }}</a>
+    <button class="mobile-menu-btn" id="openSidebarBtn" aria-label="Menu"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
+  </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <a class="dash-brand" href="{{ url_for('dashboard') }}"><span class="logo-mark">&#8377;</span>{{ brand }}</a>
+        <button class="mobile-menu-btn" id="closeSidebarBtn" style="display:none" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Main</div>
+      <a href="#top" class="sidebar-item active"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg> Dashboard</a>
+      <a href="#orders" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg> Orders</a>
+      <a href="#payments" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg> Payments</a>
+      <a href="#emails" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Emails</a>
+      <div class="sidebar-section-label">Settings</div>
+      <a href="#settings" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Payment settings</a>
+      <a href="#mailbox" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 6L2 7"/></svg> Mailbox</a>
+      <a href="#keys" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3"/></svg> API &amp; webhooks</a>
+      <a href="#test" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Test order</a>
+      <a href="{{ url_for('docs') }}" class="sidebar-item"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Documentation</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user-card">
+        <div style="overflow:hidden;min-width:0">
+          <div class="sidebar-user-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Merchant</div>
+          <div class="sidebar-user-role" style="overflow:hidden;text-overflow:ellipsis">{{ m.email }}</div>
+        </div>
+      </div>
+      <a href="{{ url_for('logout') }}" class="sidebar-logout"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg> Sign Out</a>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay" style="display:none"></div>
+  <main class="main-content">
+    <div class="wrap" id="top">
+      <div class="page-title-row" style="margin-bottom:24px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px">
+        <div>
+          <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.5px">Dashboard</h1>
+          <p style="font-size:13px;color:var(--ink-300);margin-top:4px">Here&rsquo;s what&rsquo;s happening with your payments. Times shown in UTC.</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          {% if m.imap.enabled and m.imap.user and not (m.imap_status and m.imap_status.last_error) %}
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;background:#ecfdf5;border:1px solid #10b981;border-radius:50px;font-size:12px;color:#047857"><span style="width:8px;height:8px;border-radius:50%;background:#10b981"></span>Mailbox connected</div>
+          {% else %}
+          <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;background:#fffbeb;border:1px solid #f59e0b;border-radius:50px;font-size:12px;color:#b45309"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span>Mailbox not configured <a href="#mailbox" style="margin-left:6px;padding:2px 8px;background:#f59e0b;color:#fff;border-radius:4px;text-decoration:none;font-weight:600;font-size:11px">Configure</a></div>
+          {% endif %}
+        </div>
+      </div>
 
-<div class="shell stack">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Total orders</div><div class="stat-card-icon blue"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2"/></svg></div></div><div class="stat-card-value tnum">{{ stats.total }}</div></div>
+        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Paid</div><div class="stat-card-icon green"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div></div><div class="stat-card-value tnum">{{ stats.paid }}</div></div>
+        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Pending / expired</div><div class="stat-card-icon red"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div></div><div class="stat-card-value tnum">{{ stats.other }}</div></div>
+        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Total revenue</div><div class="stat-card-icon green"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 8h12M6 13l8.5 8M6 13h3a4 4 0 0 0 0-10"/></svg></div></div><div class="stat-card-value tnum" style="color:#10b981">&#8377;{{ fmt(stats.revenue_paise) }}</div></div>
+      </div>
 
+      {% with messages = get_flashed_messages(with_categories=true) %}{% for cat, msg in messages %}<div class="flash {{ cat }}" style="margin-bottom:16px">{{ msg }}</div>{% endfor %}{% endwith %}
+
+      <div class="stack-dash">
   {% if new_api_key %}
   <div class="card">
     <h2>Your new API key</h2>
@@ -21,7 +87,7 @@
   <div class="notice warn">{{ failed_webhooks }} webhook deliver{{ 'y' if failed_webhooks == 1 else 'ies' }} failed after all retries. Check that your callback URL is reachable and returns a 2xx status.</div>
   {% endif %}
 
-  <div class="card">
+  <div class="card" id="settings">
     <h2>1 &middot; Payment settings</h2>
     <p class="sub">Where customers pay, and where webhooks are sent by default.</p>
     <form method="post" action="{{ url_for('save_settings') }}">
@@ -35,7 +101,7 @@
     </form>
   </div>
 
-  <div class="card">
+  <div class="card" id="mailbox">
     <h2>2 &middot; Mailbox that receives credit alerts</h2>
     <p class="sub">{{ brand }} reads new alerts from the senders you list, checks they are authentic, and matches them to open orders. Use a dedicated mailbox (for example a new Gmail with a forwarding rule from your main inbox) and an <b>app password</b>, never your main password.</p>
     <form method="post" action="{{ url_for('save_imap') }}">
@@ -61,7 +127,7 @@
     {% endif %}
   </div>
 
-  <div class="card">
+  <div class="card" id="keys">
     <h2>3 &middot; API credentials</h2>
     <p class="sub">Send the key as <code>Authorization: Bearer &lt;key&gt;</code>. Verify webhooks with the signing secret.</p>
     <div class="field"><label>API key</label><div class="secret">{{ m.api_key_prefix }}&hellip; (hidden)</div></div>
@@ -71,7 +137,7 @@
     </form>
   </div>
 
-  <div class="card">
+  <div class="card" id="test">
     <h2>Try it: create a test order</h2>
     <p class="sub">Opens the hosted checkout page so you can pay with your UPI app and watch it confirm.</p>
     <form method="post" action="{{ url_for('test_order') }}" class="row">
@@ -81,7 +147,7 @@
     </form>
   </div>
 
-  <div class="card">
+  <div class="card" id="orders">
     <h2>Recent orders</h2>
     {% if orders %}<div class="table-wrap"><table class="t">
       <tr><th>Order</th><th>Payable</th><th>Status</th><th>UTR</th><th>Created</th></tr>
@@ -93,7 +159,7 @@
     </table></div>{% else %}<p class="empty">No orders yet.</p>{% endif %}
   </div>
 
-  <div class="card">
+  <div class="card" id="payments">
     <h2>Recent payments detected</h2>
     {% if payments %}<div class="table-wrap"><table class="t">
       <tr><th>UTR</th><th>Amount</th><th>Result</th><th>Order</th><th>Detected</th></tr>
@@ -104,7 +170,7 @@
     {% else %}<p class="empty">Nothing detected yet.</p>{% endif %}
   </div>
 
-  <div class="card">
+  <div class="card" id="emails">
     <h2>Recent emails processed</h2>
     <p class="sub">Use this to check the parser is reading your bank's alerts correctly.</p>
     {% if emails %}<div class="table-wrap"><table class="t">
@@ -112,5 +178,20 @@
       {% for e in emails %}<tr><td>{{ e.created_at | dt }}</td><td class="mono">{{ e.sender }}</td><td>{{ e.subject }}</td><td>{{ e.result }}</td></tr>{% endfor %}
     </table></div>{% else %}<p class="empty">No emails processed yet.</p>{% endif %}
   </div>
+      </div>
+    </div>
+  </main>
 </div>
-{% endblock %}
+<script>
+(function () {
+  var sb = document.getElementById('sidebar'), ov = document.getElementById('sidebarOverlay'),
+      op = document.getElementById('openSidebarBtn'), cl = document.getElementById('closeSidebarBtn');
+  function set(o) { sb.classList.toggle('open', o); ov.style.display = o ? 'block' : 'none'; cl.style.display = o ? 'flex' : 'none'; }
+  if (op) op.addEventListener('click', function () { set(true); });
+  if (cl) cl.addEventListener('click', function () { set(false); });
+  if (ov) ov.addEventListener('click', function () { set(false); });
+  sb.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+})();
+</script>
+</body>
+</html>
