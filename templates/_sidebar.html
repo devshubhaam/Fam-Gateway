@@ -20,7 +20,6 @@
     <div class="sidebar-section-label">Settings</div>
     <a href="{{ url_for('integrations') }}" class="sidebar-item {{ 'active' if active == 'integrations' }}">{{ icon('plug') }} Integrations</a>
     <a href="{{ url_for('profile') }}" class="sidebar-item {{ 'active' if active == 'profile' }}">{{ icon('user') }} Profile</a>
-    <a href="{{ url_for('dashboard') }}#settings" class="sidebar-item">{{ icon('settings') }} Payment settings</a>
     <a href="{{ url_for('docs') }}" class="sidebar-item {{ 'active' if active == 'docs' }}">{{ icon('book') }} Documentation</a>
     <a href="{{ url_for('status_page') }}" class="sidebar-item {{ 'active' if active == 'status' }}">{{ icon('activity') }} System Status</a>
     {% if support_whatsapp %}<a href="https://wa.me/{{ support_whatsapp }}" target="_blank" rel="noopener" class="sidebar-item" style="color:#10b981;font-weight:600">{{ icon('whatsapp') }} WhatsApp Support</a>{% endif %}
