@@ -10,55 +10,119 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='design.css') }}?v=1">
 <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=1">
-<link rel="stylesheet" href="{{ url_for('static', filename='dash.css') }}?v=1">
-<style>.brand-logo{height:26px;width:auto;display:block;object-fit:contain}.stat-card-icon.img{background:none!important;box-shadow:none!important;width:48px;height:48px}.stat-card-icon.img img{width:100%;height:100%;object-fit:contain;display:block}</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='dash.css') }}?v=2">
+<style>.brand-logo{height:26px;width:auto;display:block;object-fit:contain}@keyframes pulseOpacity{0%{opacity:0.4}50%{opacity:1}100%{opacity:0.4}}.mid-badge-btn:hover{border-color:#cbd5e1!important;background:#f8fafc!important}</style>
 </head>
 <body>
 <div class="dashboard-layout">
   {% set active = 'dashboard' %}{% include "_sidebar.html" %}
   <main class="main-content">
     <div class="wrap" id="top">
+
       <div class="page-title-row" style="margin-bottom:24px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px">
         <div>
-          <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.5px">{{ greeting }}, {{ display_name }} &#128075;</h1>
-          <p style="font-size:13px;color:var(--ink-300);margin-top:4px">Here&rsquo;s what&rsquo;s happening with your payments today. Times shown in UTC.</p>
+          <h1 style="font-size:22px;font-weight:700;color:var(--color-ink);letter-spacing:-0.5px">{{ greeting }}, {{ display_name }} &#128075;</h1>
+          <p style="font-size:13px;color:var(--color-ink-mute);margin-top:4px">Here's what's happening with your API today.</p>
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <div id="midBtn" title="Click to copy Merchant ID" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:#fff;border:1px solid var(--color-hairline);border-radius:50px;font-size:12px;font-weight:600;cursor:pointer;user-select:none"><span style="color:var(--ink-300);font-size:11px;font-weight:700;letter-spacing:.5px">MID:</span><span id="midVal" style="font-family:monospace;font-weight:700">{{ m._id }}</span></div>
-          {% if m.imap.enabled and m.imap.user and not (m.imap_status and m.imap_status.last_error) %}
-          <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;background:#ecfdf5;border:1px solid #10b981;border-radius:50px;font-size:12px;color:#047857"><span style="width:8px;height:8px;border-radius:50%;background:#10b981"></span>Mailbox connected</div>
+          <div class="mid-badge-btn" id="midBtn" title="Click to copy Merchant ID" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:#ffffff;border:1px solid var(--color-hairline);border-radius:50px;font-size:12px;font-weight:600;color:var(--color-ink);cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.02);transition:all 0.2s ease;user-select:none">
+            <span style="color:var(--color-ink-mute);font-size:11px;font-weight:700;letter-spacing:0.5px">MID:</span>
+            <span id="midVal" style="font-family:monospace;color:var(--color-ink);font-weight:700;letter-spacing:0.5px">{{ m._id }}</span>
+            <svg class=mid-copy-icon width=13 height=13 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round style="color:var(--color-ink-mute);transition:color 0.15s"><rect width=14 height=14 x=8 y=8 rx=2 ry=2></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+          </div>
+          {% if m.imap.enabled and m.imap.user and m.imap_status and m.imap_status.last_error %}
+          <div id="imapStatusWidget" style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;background:rgb(254,242,242);border:1px solid rgb(239,68,68);border-radius:50px;font-size:12px;font-weight:500;cursor:default;box-shadow:rgba(239,68,68,0.2) 0px 0px 0px 4px;transition:0.3s" title="{{ m.imap_status.last_error }}">
+            <div class="dot" id="imapStatusDot" style="background:rgb(239,68,68);width:8px;height:8px;border-radius:50%"></div>
+            <span id="imapStatusText" style="color:rgb(185,28,28)">IMAP Error <a href="{{ url_for('integrations') }}" style="margin-left:8px;padding:2px 8px;background:#ef4444;color:#fff;border-radius:4px;text-decoration:none;font-weight:600;font-size:11px;box-shadow:0 2px 4px rgba(239,68,68,0.3)">Fix</a></span>
+          </div>
+          {% elif m.imap.enabled and m.imap.user %}
+          <div id="imapStatusWidget" style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;background:rgb(236,253,245);border:1px solid rgb(16,185,129);border-radius:50px;font-size:12px;font-weight:500;cursor:default;box-shadow:rgba(16,185,129,0.2) 0px 0px 0px 4px;transition:0.3s" title="Your Gmail is connected and payments are verified automatically.">
+            <div class="dot" id="imapStatusDot" style="background:rgb(16,185,129);width:8px;height:8px;border-radius:50%"></div>
+            <span id="imapStatusText" style="color:rgb(4,120,87)">IMAP Connected</span>
+          </div>
           {% else %}
-          <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;background:#fffbeb;border:1px solid #f59e0b;border-radius:50px;font-size:12px;color:#b45309"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span>Mailbox not configured <a href="#mailbox" style="margin-left:6px;padding:2px 8px;background:#f59e0b;color:#fff;border-radius:4px;text-decoration:none;font-weight:600;font-size:11px">Configure</a></div>
+          <div id="imapStatusWidget" style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;background:rgb(255,251,235);border:1px solid rgb(245,158,11);border-radius:50px;font-size:12px;font-weight:500;cursor:default;box-shadow:rgba(245,158,11,0.2) 0px 0px 0px 4px;transition:0.3s" title="Please configure your Gmail App Password in Integrations.">
+            <div class="dot" id="imapStatusDot" style="background:rgb(245,158,11);width:8px;height:8px;border-radius:50%"></div>
+            <span id="imapStatusText" style="color:rgb(180,83,9)">IMAP Not Configured <a href="{{ url_for('integrations') }}" style="margin-left:8px;padding:2px 8px;background:#f59e0b;color:#fff;border-radius:4px;text-decoration:none;font-weight:600;font-size:11px;box-shadow:0 2px 4px rgba(245,158,11,0.3)">Configure</a></span>
+          </div>
           {% endif %}
         </div>
       </div>
 
+      {% with messages = get_flashed_messages(with_categories=true) %}{% for cat, msg in messages %}<div class="flash {{ cat }}" style="margin-bottom:16px">{{ msg }}</div>{% endfor %}{% endwith %}
+
       <div class="stat-grid">
-        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Total orders</div><div class="stat-card-icon img"><img src="https://res.cloudinary.com/vyqo8row/image/upload/f_auto/q_auto/file_0000000029508211bd60ec7574bb7a0d.png" alt="Total orders"></div></div><div class="stat-card-value tnum">{{ stats.total }}</div></div>
-        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Paid</div><div class="stat-card-icon img"><img src="https://res.cloudinary.com/vyqo8row/image/upload/f_auto/q_auto/file_000000006d9c82109b49bcb426899a1a.png" alt="Paid"></div></div><div class="stat-card-value tnum">{{ stats.paid }}</div></div>
-        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Pending / expired</div><div class="stat-card-icon img"><img src="https://res.cloudinary.com/vyqo8row/image/upload/f_auto/q_auto/file_00000000b5308211b6cafcca302c0246.png" alt="Pending / expired"></div></div><div class="stat-card-value tnum">{{ stats.other }}</div></div>
-        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Total revenue</div><div class="stat-card-icon img"><img src="https://res.cloudinary.com/vyqo8row/image/upload/f_auto/q_auto/file_0000000000e4821081af7d3d55445ff4.png" alt="Total revenue"></div></div><div class="stat-card-value tnum" style="color:#10b981">&#8377;{{ fmt(stats.revenue_paise) }}</div></div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Total Requests</div>
+            <div class="stat-card-icon blue"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=activity aria-hidden=true style=width:20px;height:20px class="lucide lucide-activity"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg></div>
+          </div>
+          <div class="stat-card-value tnum">{{ stats.total }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Successful</div>
+            <div class="stat-card-icon green"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=check-circle-2 aria-hidden=true style=width:20px;height:20px class="lucide lucide-check-circle-2"><circle cx=12 cy=12 r=10></circle><path d="m16 9-5.5 5.5L8 12"></path></svg></div>
+          </div>
+          <div class="stat-card-value tnum">{{ stats.paid }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Failed / Pending</div>
+            <div class="stat-card-icon red"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=alert-circle aria-hidden=true style=width:20px;height:20px class="lucide lucide-alert-circle"><circle cx=12 cy=12 r=10></circle><line x1=12 x2=12 y1=8 y2=12></line><line x1=12 x2=12.01 y1=16 y2=16></line></svg></div>
+          </div>
+          <div class="stat-card-value tnum">{{ stats.other }}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-label">Total Revenue</div>
+            <div class="stat-card-icon green"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=indian-rupee aria-hidden=true style=width:20px;height:20px class="lucide lucide-indian-rupee"><path d="M6 3h12"></path><path d="M6 8h12"></path><path d="m6 13 8.5 8"></path><path d="M6 13h3"></path><path d="M9 13c6.667 0 6.667-10 0-10"></path></svg></div>
+          </div>
+          <div class="stat-card-value tnum" style="color:#10b981">&#8377;{{ fmt(stats.revenue_paise) }}</div>
+        </div>
       </div>
 
-
-      <div class="card" id="setup" style="margin-bottom:28px">
-        <div class="card-header"><div class="card-title">Quick Setup Guide</div><div class="card-sub">Finish these steps to start accepting payments.</div></div>
-        <ul style="list-style:none;padding:0;margin:0 0 16px;color:var(--ink-300);font-size:14px;line-height:1.6">
-          <li style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><span class="chk {{ 'on' if setup.upi else 'off' }}">{{ '&#10003;' if setup.upi else '&middot;' }}</span> Save your UPI ID in <a href="#settings" style="color:#2563eb">Payment settings</a></li>
-          <li style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><span class="chk {{ 'on' if setup.mail else 'off' }}">{{ '&#10003;' if setup.mail else '&middot;' }}</span> Connect the mailbox that gets your credit alerts (<a href="#mailbox" style="color:#2563eb">Mailbox</a>)</li>
-          <li style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><span class="chk {{ 'on' if setup.hook else 'off' }}">{{ '&#10003;' if setup.hook else '&middot;' }}</span> Add a webhook URL for instant updates</li>
-          <li style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><span class="chk {{ 'on' if setup.order else 'off' }}">{{ '&#10003;' if setup.order else '&middot;' }}</span> Create a <a href="#test" style="color:#2563eb">test order</a> and pay it</li>
-        </ul>
-        <a href="{{ url_for('docs') }}" class="btn btn-secondary btn-sm">Read Documentation</a>
+      <div class="card" id="quick-setup-guide" style="margin-bottom:28px;position:relative">
+        <button type="button" id="hide-setup-btn" style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;color:var(--color-ink-mute);padding:4px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background 0.2s" title="Hide for 24 hours">
+          <svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=x aria-hidden=true style=width:20px;height:20px class="lucide lucide-x"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+        </button>
+        <div class="card-header" style="margin-bottom:20px;padding-right:32px">
+          <div class="card-title" style="justify-content:flex-start!important"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=play-circle aria-hidden=true style="width:18px;height:18px;color:#ef4444" class="lucide lucide-play-circle"><path d="M9 9.003a1 1 0 0 1 1.517-.859l4.997 2.997a1 1 0 0 1 0 1.718l-4.997 2.997A1 1 0 0 1 9 14.996z"></path><circle cx=12 cy=12 r=10></circle></svg> <span>Quick Setup Guide</span></div>
+          <div class="card-sub">Learn how to connect your IMAP and integrate {{ brand }} into your application.</div>
+        </div>
+        <div class="tutorial-card">
+          <div style="border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm);border:1px solid var(--color-hairline);height:100%;display:flex;flex-direction:column">
+            <div style="position:relative;padding-bottom:56.25%;height:0;flex-grow:1">
+              <iframe style="position:absolute;top:0;left:0;width:100%;height:100%" title="{{ brand }} Setup Tutorial" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            </div>
+          </div>
+          <div style="background:#f8fafc;border:1px solid var(--color-hairline);border-radius:12px;padding:24px;display:flex;flex-direction:column;justify-content:center">
+            <h3 style="font-size:16px;font-weight:600;margin-bottom:12px;color:var(--color-ink)">Next Steps</h3>
+            <ul style="list-style:none;padding:0;margin:0 0 20px 0;color:var(--color-ink-mute);font-size:14px;line-height:1.6">
+              <li style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=check-circle-2 aria-hidden=true style="width:18px;height:18px;color:#10b981;flex-shrink:0;margin-top:2px" class="lucide lucide-check-circle-2"><circle cx=12 cy=12 r=10></circle><path d="m16 9-5.5 5.5L8 12"></path></svg> Connect your FamPay Gmail</li>
+              <li style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=check-circle-2 aria-hidden=true style="width:18px;height:18px;color:#10b981;flex-shrink:0;margin-top:2px" class="lucide lucide-check-circle-2"><circle cx=12 cy=12 r=10></circle><path d="m16 9-5.5 5.5L8 12"></path></svg> Create your API Keys</li>
+              <li style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=check-circle-2 aria-hidden=true style="width:18px;height:18px;color:#10b981;flex-shrink:0;margin-top:2px" class="lucide lucide-check-circle-2"><circle cx=12 cy=12 r=10></circle><path d="m16 9-5.5 5.5L8 12"></path></svg> Setup Webhooks for instant updates</li>
+              <li style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=check-circle-2 aria-hidden=true style="width:18px;height:18px;color:#10b981;flex-shrink:0;margin-top:2px" class="lucide lucide-check-circle-2"><circle cx=12 cy=12 r=10></circle><path d="m16 9-5.5 5.5L8 12"></path></svg> Explore API Documentation</li>
+              <li style="margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=check-circle-2 aria-hidden=true style="width:18px;height:18px;color:#10b981;flex-shrink:0;margin-top:2px" class="lucide lucide-check-circle-2"><circle cx=12 cy=12 r=10></circle><path d="m16 9-5.5 5.5L8 12"></path></svg> Start accepting payments</li>
+            </ul>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:auto">
+              <a href="{{ url_for('integrations') }}" class="btn btn-primary btn-sm">Configure IMAP</a>
+              <a href="{{ url_for('docs') }}" class="btn btn-secondary btn-sm">Read Documentation</a>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="card" style="margin-bottom:28px">
         <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-          <div><div class="card-title" id="chartTitle">Activity &mdash; Last 7 Days</div><div class="card-sub">Orders and revenue over time</div></div>
+          <div>
+            <div class="card-title" id="chartTitleText"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=trending-up aria-hidden=true style=width:18px;height:18px;color:var(--color-primary) class="lucide lucide-trending-up"><path d="M16 7h6v6"></path><path d="m22 7-8.5 8.5-5-5L2 17"></path></svg> <span id="chartTitle">Activity &mdash; Last 7 Days</span></div>
+            <div class="card-sub">API requests and revenue over time</div>
+          </div>
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
             <div style="display:flex;gap:6px">
               <button type="button" class="chart-toggle-btn active" id="tRev"><span class="dot rev-dot"></span> Revenue</button>
-              <button type="button" class="chart-toggle-btn active" id="tReq"><span class="dot req-dot"></span> Orders</button>
+              <button type="button" class="chart-toggle-btn active" id="tReq"><span class="dot req-dot"></span> Requests</button>
             </div>
             <div class="chart-time-pills"><button type="button" class="time-pill active" data-r="7">7D</button><button type="button" class="time-pill" data-r="15">15D</button><button type="button" class="time-pill" data-r="30">30D</button></div>
           </div>
@@ -67,114 +131,28 @@
       </div>
 
       <div class="card" id="orders" style="padding:0;overflow:hidden;margin-bottom:28px">
-        <div style="padding:22px 28px;border-bottom:1px solid var(--color-hairline)"><div class="card-title">Recent Transactions</div><div class="card-sub">Your last 10 orders</div></div>
-        <div class="table-responsive"><table class="tx-table">
-          <thead><tr><th>Order ID</th><th>Bank RRN</th><th>Customer detail</th><th>Created on</th><th>Amount</th><th>Status</th><th style="text-align:right">Action</th></tr></thead>
-          <tbody>
-          {% for o in orders[:10] %}<tr>
-            <td class="mono">{{ o.order_id }}</td><td class="mono">{{ o.utr or '-' }}</td><td>{{ o.order_ref or '-' }}</td>
-            <td>{{ o.created_at | dt }}</td><td>&#8377;{{ fmt(o.payable_paise) }}</td>
-            <td><span class="badge {{ status_of(o) }}">{{ status_of(o) }}{{ ' (late)' if o.paid_late }}</span></td>
-            <td style="text-align:right"><a href="{{ url_for('pay', order_id=o.order_id) }}" class="btn btn-secondary btn-sm">Open</a></td></tr>
-          {% else %}<tr><td colspan="7"><div class="empty-state"><div class="empty-state-title">No transactions yet</div><div class="empty-state-sub">Create a test order below to get started</div></div></td></tr>{% endfor %}
-          </tbody></table></div>
+        <div style="padding:22px 28px;border-bottom:1px solid var(--color-hairline);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div>
+            <div class="card-title"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=receipt aria-hidden=true style=width:18px;height:18px;color:var(--color-primary) class="lucide lucide-receipt"><path d="M12 17V7"></path><path d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"></path><path d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"></path></svg> Recent Transactions</div>
+            <div class="card-sub">Your last 10 orders</div>
+          </div>
+          <a href="{{ url_for('transactions') }}" class="btn btn-secondary btn-sm"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=arrow-right aria-hidden=true style=width:14px;height:14px class="lucide lucide-arrow-right"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg> View All</a>
+        </div>
+        <div class="table-responsive" style="margin:0;border-top:none">
+          <table class="tx-table">
+            <thead><tr><th>Order ID</th><th>Bank RRN</th><th>Customer detail</th><th>Created on</th><th>Amount</th><th>Status</th><th style="text-align:right">Action</th></tr></thead>
+            <tbody>
+            {% for o in orders[:10] %}<tr>
+              <td class="mono">{{ o.order_id }}</td><td class="mono">{{ o.utr or '-' }}</td><td>{{ o.order_ref or '-' }}</td>
+              <td>{{ o.created_at | dt }}</td><td>&#8377;{{ fmt(o.payable_paise) }}</td>
+              <td><span class="badge {{ status_of(o) }}">{{ status_of(o) }}{{ ' (late)' if o.paid_late }}</span></td>
+              <td style="text-align:right"><a href="{{ url_for('pay', order_id=o.order_id) }}" class="btn btn-secondary btn-sm">Open</a></td></tr>
+            {% else %}<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon"><svg xmlns=http://www.w3.org/2000/svg width=24 height=24 viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round data-lucide=inbox aria-hidden=true style=width:24px;height:24px class="lucide lucide-inbox"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg></div><div class="empty-state-title">No transactions yet</div><div class="empty-state-sub">Create your first payment link to get started</div></div></td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {% with messages = get_flashed_messages(with_categories=true) %}{% for cat, msg in messages %}<div class="flash {{ cat }}" style="margin-bottom:16px">{{ msg }}</div>{% endfor %}{% endwith %}
-
-      <div class="stack-dash">
-  {% if new_api_key %}
-  <div class="card">
-    <h2>Your new API key</h2>
-    <p class="sub">Copy it now &mdash; it is shown only once. If you lose it, regenerate it below.</p>
-    <div class="secret">{{ new_api_key }}</div>
-  </div>
-  {% endif %}
-
-  {% if failed_webhooks %}
-  <div class="notice warn">{{ failed_webhooks }} webhook deliver{{ 'y' if failed_webhooks == 1 else 'ies' }} failed after all retries. Check that your callback URL is reachable and returns a 2xx status.</div>
-  {% endif %}
-
-  <div class="card" id="settings">
-    <h2>1 &middot; Payment settings</h2>
-    <p class="sub">Where customers pay, and where webhooks are sent by default.</p>
-    <form method="post" action="{{ url_for('save_settings') }}">
-      <input type="hidden" name="csrf" value="{{ csrf }}">
-      <div class="grid2">
-        <div class="field"><label for="upi_id">Your UPI ID</label><input id="upi_id" name="upi_id" value="{{ m.upi_id }}" placeholder="name@fam" autocapitalize="off"></div>
-        <div class="field"><label for="payee_name">Payee name</label><input id="payee_name" name="payee_name" value="{{ m.payee_name }}" placeholder="Shown to customers"></div>
-      </div>
-      <div class="field"><label for="webhook_url">Default webhook URL</label><input id="webhook_url" name="webhook_url" value="{{ m.webhook_url }}" placeholder="https://your-app.onrender.com/payment-webhook" autocapitalize="off"><small>Must be https. You can also pass <code>callback_url</code> per order.</small></div>
-      <button class="primary" type="submit">Save settings</button>
-    </form>
-  </div>
-
-  <div class="card" id="mailbox">
-    <h2>2 &middot; Mailbox that receives credit alerts</h2>
-    <p class="sub">{{ brand }} reads new alerts from the senders you list, checks they are authentic, and matches them to open orders. Use a dedicated mailbox (for example a new Gmail with a forwarding rule from your main inbox) and an <b>app password</b>, never your main password.</p>
-    <form method="post" action="{{ url_for('save_imap') }}">
-      <input type="hidden" name="csrf" value="{{ csrf }}">
-      <div class="grid2">
-        <div class="field"><label for="host">IMAP host</label><input id="host" name="host" value="{{ m.imap.host }}" autocapitalize="off"></div>
-        <div class="field"><label for="user">Mailbox username</label><input id="user" name="user" value="{{ m.imap.user }}" placeholder="you@gmail.com" autocapitalize="off"></div>
-      </div>
-      <div class="field"><label for="password">App password</label><input id="password" name="password" type="password" placeholder="{{ 'Saved - leave blank to keep' if m.imap.password_enc else 'Paste the 16-character app password' }}" autocomplete="off"></div>
-      <div class="field"><label for="allowed_senders">Allowed senders</label>
-        <textarea id="allowed_senders" name="allowed_senders" rows="2" placeholder="alerts@yourbank.com">{{ m.imap.allowed_senders | join('\n') }}</textarea>
-        <small>One per line: a full address, or a domain like <code>yourbank.com</code>. Only mail from these senders is ever read.</small></div>
-      <label class="check"><input type="checkbox" name="require_auth" {{ 'checked' if m.imap.require_auth }}> Require DKIM/DMARC pass (blocks spoofed emails &mdash; recommended)</label>
-      <label class="check"><input type="checkbox" name="enabled" {{ 'checked' if m.imap.enabled }}> Enable automatic verification</label>
-      <div class="row">
-        <button class="primary" type="submit">Save mailbox</button>
-      </div>
-    </form>
-    <form method="post" action="{{ url_for('test_imap') }}" style="margin-top:10px"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn-ghost" type="submit">Test connection</button></form>
-    {% if m.imap_status and m.imap_status.last_poll_at %}
-      <p class="sub" style="margin:14px 0 0">Last check: {{ m.imap_status.last_poll_at | dt }}
-      {% if m.imap_status.last_error %}<br><span style="color:#b91c1c">Error: {{ m.imap_status.last_error }}</span>{% endif %}</p>
-    {% endif %}
-  </div>
-
-  <div class="card" id="keys">
-    <h2>3 &middot; API credentials</h2>
-    <p class="sub">Send the key as <code>Authorization: Bearer &lt;key&gt;</code>. Verify webhooks with the signing secret.</p>
-    <div class="field"><label>API key</label><div class="secret">{{ m.api_key_prefix }}&hellip; (hidden)</div></div>
-    <div class="field"><label>Webhook signing secret</label><div class="secret">{{ webhook_secret }}</div></div>
-    <form method="post" action="{{ url_for('regenerate_key') }}" onsubmit="return confirm('Regenerate the API key? The old key stops working immediately.')">
-      <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn-ghost" type="submit">Regenerate API key</button>
-    </form>
-  </div>
-
-  <div class="card" id="test">
-    <h2>Try it: create a test order</h2>
-    <p class="sub">Opens the hosted checkout page so you can pay with your UPI app and watch it confirm.</p>
-    <form method="post" action="{{ url_for('test_order') }}" class="row">
-      <input type="hidden" name="csrf" value="{{ csrf }}">
-      <div class="field" style="margin:0;width:140px"><input name="amount" inputmode="decimal" value="1" aria-label="Amount in INR"></div>
-      <button class="primary" type="submit">Create test order</button>
-    </form>
-  </div>
-
-  <div class="card" id="payments">
-    <h2>Recent payments detected</h2>
-    {% if payments %}<div class="table-wrap"><table class="t">
-      <tr><th>UTR</th><th>Amount</th><th>Result</th><th>Order</th><th>Detected</th></tr>
-      {% for p in payments %}<tr><td class="mono">{{ p.utr }}</td><td>&#8377;{{ fmt(p.amount_paise) }}</td>
-        <td><span class="badge {{ p.status }}">{{ p.status }}</span></td><td class="mono">{{ p.order_id or '-' }}</td><td>{{ p.created_at | dt }}</td></tr>{% endfor %}
-    </table></div>
-    <p class="sub" style="margin:12px 0 0">"unmatched" means money arrived but no open order had that exact amount.</p>
-    {% else %}<p class="empty">Nothing detected yet.</p>{% endif %}
-  </div>
-
-  <div class="card" id="emails">
-    <h2>Recent emails processed</h2>
-    <p class="sub">Use this to check the parser is reading your bank's alerts correctly.</p>
-    {% if emails %}<div class="table-wrap"><table class="t">
-      <tr><th>When</th><th>Sender</th><th>Subject</th><th>Result</th></tr>
-      {% for e in emails %}<tr><td>{{ e.created_at | dt }}</td><td class="mono">{{ e.sender }}</td><td>{{ e.subject }}</td><td>{{ e.result }}</td></tr>{% endfor %}
-    </table></div>{% else %}<p class="empty">No emails processed yet.</p>{% endif %}
-  </div>
-      </div>
     </div>
   </main>
 </div>
@@ -187,6 +165,15 @@
   if (cl) cl.addEventListener('click', function () { set(false); });
   if (ov) ov.addEventListener('click', function () { set(false); });
   sb.addEventListener('click', function (e) { if (e.target.closest('a')) set(false); });
+})();
+
+(function () {
+  var g = document.getElementById('quick-setup-guide'), KEY = 'fg_hide_setup_until';
+  try { if (+localStorage.getItem(KEY) > Date.now()) g.style.display = 'none'; } catch (e) {}
+  document.getElementById('hide-setup-btn').addEventListener('click', function () {
+    g.style.display = 'none';
+    try { localStorage.setItem(KEY, String(Date.now() + 24 * 3600 * 1000)); } catch (e) {}
+  });
 })();
 
 (function () {
@@ -217,8 +204,15 @@
   document.getElementById('tRev').addEventListener('click', function () { showRev = !showRev; this.classList.toggle('active', showRev); draw(); });
   document.getElementById('tReq').addEventListener('click', function () { showReq = !showReq; this.classList.toggle('active', showReq); draw(); });
   window.addEventListener('resize', draw); draw();
+
   var mid = document.getElementById('midBtn');
-  if (mid) mid.addEventListener('click', function () { if (navigator.clipboard) navigator.clipboard.writeText(document.getElementById('midVal').textContent); });
+  if (mid) mid.addEventListener('click', function () {
+    var v = document.getElementById('midVal').textContent.trim(), old = mid.title;
+    function done() { mid.title = 'Copied!'; setTimeout(function () { mid.title = old; }, 1500); }
+    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(v).then(done); return; }
+    var ta = document.createElement('textarea'); ta.value = v; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove();
+  });
 })();
 </script>
 </body>
