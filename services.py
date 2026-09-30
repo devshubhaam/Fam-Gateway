@@ -164,6 +164,7 @@ def notify_payment_received(merchant: dict, order: dict) -> None:
         when = f"{ist.day} {ist:%b %Y}, {ist:%I:%M %p} IST"
         name = (merchant.get("full_name") or merchant.get("payee_name")
                 or merchant["email"].split("@")[0])
+        log.warning("payment mail: order %s paid, emailing %s", order["order_id"], merchant["email"])
         famway_mail_async("payment_received", merchant["email"], name, {
             "amount": "\u20b9" + fmt_amount(order["payable_paise"]),
             "order_id": order["order_id"],
