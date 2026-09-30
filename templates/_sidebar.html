@@ -1,12 +1,12 @@
 {% from "_icons.html" import icon %}
 <div class="mobile-header">
-  <a class="dash-brand" href="{{ url_for('dashboard') }}"><span class="logo-mark">&#8377;</span>{{ brand }}</a>
+  <a class="dash-brand" href="{{ url_for('dashboard') }}"><img src="https://res.cloudinary.com/vyqo8row/image/upload/f_auto/q_auto/file_00000000c22082118ee1d33948a8d573.png" alt="{{ brand }}" class="brand-logo"></a>
   <button class="mobile-menu-btn" id="openSidebarBtn" aria-label="Menu" type="button">{{ icon('menu', 16) }}</button>
 </div>
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <a class="dash-brand" href="{{ url_for('dashboard') }}"><span class="logo-mark">&#8377;</span>{{ brand }}</a>
+      <a class="dash-brand" href="{{ url_for('dashboard') }}"><img src="https://res.cloudinary.com/vyqo8row/image/upload/f_auto/q_auto/file_00000000c22082118ee1d33948a8d573.png" alt="{{ brand }}" class="brand-logo"></a>
       <button class="mobile-menu-btn" id="closeSidebarBtn" style="display:none" aria-label="Close" type="button">{{ icon('x', 16) }}</button>
     </div>
   </div>
