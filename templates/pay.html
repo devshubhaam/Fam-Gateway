@@ -9,18 +9,29 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='checkout.css') }}?v=1">
+<style>.qr-skeleton{overflow:hidden}.qr-skeleton::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);animation:qrShimmer 1.4s infinite}</style>
+<noscript><style>#qr{opacity:1!important}#qrSkeleton{display:none!important}</style></noscript>
 </head>
 <body>
 <div class="product">
   <div class="product-main" id="card" data-status="{{ status }}">
-    <div class="gateway-brand"><span class="brand-mark"><span class="logo-mark">&#8377;</span>{{ brand }}</span></div>
+    <div class="gateway-brand">
+      <a href="{{ url_for('index') }}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none">
+        <img src="https://res.cloudinary.com/vyqo8row/image/upload/f_auto/q_auto/file_0000000053c48211a0670d491d81e748.png" alt="{{ brand }}" style="height:50px;width:auto;display:block;object-fit:contain">
+      </a>
+    </div>
     <div class="product-label">Order total</div>
     <div class="money">&#8377; {{ fmt(order.payable_paise) }} <small>INR</small></div>
 
     <div class="pay-card">
       <div id="body-pending" {% if status != 'pending' %}hidden{% endif %}>
         <div class="qr-container">
-          <div class="qr-box-wrap"><img id="qr" class="qr-image loaded" src="{{ url_for('qr', order_id=order.order_id) }}" alt="UPI QR code" width="170" height="170"></div>
+          <div class="qr-box-wrap">
+            <div id="qrSkeleton" class="qr-skeleton" style="display:flex;opacity:1">
+              <svg class="qr-skeleton-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3z"/><path d="M20 14v3"/><path d="M14 20h3"/><path d="M20 20h.01"/></svg>
+            </div>
+            <img id="qr" class="qr-image" style="opacity:0" src="{{ url_for('qr', order_id=order.order_id) }}" alt="UPI QR code" width="170" height="170">
+          </div>
           <div class="qr-note">Scan with any UPI app</div>
           <button type="button" class="save-qr" id="saveQr">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -121,6 +132,12 @@
     });
   });
   tick(); setInterval(tick, 1000); setInterval(poll, 3000);
+  // QR loader: show skeleton for 5 seconds, then reveal the QR
+  setTimeout(function () {
+    var sk = $('qrSkeleton'), q = $('qr');
+    if (sk) { sk.style.opacity = '0'; setTimeout(function () { sk.style.display = 'none'; }, 250); }
+    if (q) { q.classList.add('loaded'); q.style.opacity = '1'; }
+  }, 5000);
 })();
 </script>
 </body>
