@@ -20,6 +20,7 @@
       <div class="field"><label for="password">Password</label>
         <input id="password" name="password" type="password" minlength="8" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}" required>
         {% if mode == 'register' %}<small>At least 8 characters.</small>{% endif %}
+        {% if mode == 'login' %}<small><a href="{{ url_for('forgot') }}" style="color:var(--blue-600);font-weight:600">Forgot password?</a></small>{% endif %}
       </div>
       <button class="primary" type="submit" style="width:100%;justify-content:center">{{ 'Create account' if mode == 'register' else 'Sign in' }} &rarr;</button>
     </form>
