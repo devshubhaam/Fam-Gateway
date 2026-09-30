@@ -1,160 +1,111 @@
-{% extends "dash_base.html" %}
-{% block title %}Webhooks{% endblock %}
-{% block bodyclass %}page-webhooks{% endblock %}
-{% block heading %}Webhooks{% endblock %}
-{% block subheading %}Receive real-time HTTP notifications for payment events across all your endpoints.{% endblock %}
-{% block content %}
-{% set ep_total = endpoints|length + (1 if default_url else 0) %}
-<div class="card webhook-settings-card">
-  <div class="integration-layout">
-    <div style="padding-top:4px">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-        <div style="width:44px;height:44px;background:rgba(139,92,246,0.1);color:#8b5cf6;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ icon('webhook', 22) }}</div>
-        <div style="min-width:0">
-          <h2 style="font-size:18px;font-weight:600;color:var(--color-ink);margin:0">Webhook Endpoints</h2>
-          <span style="font-size:12px;color:var(--color-ink-mute)">{{ ep_total }} endpoint{{ '' if ep_total == 1 else 's' }} configured</span>
-        </div>
-      </div>
-      <p class="hide-on-mobile" style="font-size:13.5px;color:var(--color-ink-mute);line-height:1.6;margin-bottom:20px">When a payment succeeds, {{ brand }} sends a signed HTTP POST to all active endpoints. Add several to alert your store, a backup server or a tracking bot at the same time.</p>
-      <div class="hide-on-mobile" style="background:#f8fafc;padding:14px 16px;border-radius:8px;border:1px solid var(--color-hairline);margin-bottom:14px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="color:#8b5cf6;display:inline-flex">{{ icon('send', 15) }}</span><span style="font-size:13px;font-weight:600;color:var(--color-ink)">Fan-out Delivery</span></div>
-        <p style="font-size:12px;color:var(--color-ink-mute);line-height:1.5;margin:0">Every active endpoint gets its own delivery attempt, with automatic retries if it fails.</p>
-      </div>
-      <div class="hide-on-mobile" style="background:#f8fafc;padding:14px 16px;border-radius:8px;border:1px solid var(--color-hairline)">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="color:#16a34a;display:inline-flex">{{ icon('shield-check', 15) }}</span><span style="font-size:13px;font-weight:600;color:var(--color-ink)">HMAC-SHA256 Signed</span></div>
-        <p style="font-size:12px;color:var(--color-ink-mute);line-height:1.5;margin:0 0 10px">Each request carries <code>X-Timestamp</code> and <code>X-Signature</code> headers, signed with your signing secret.</p>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input type="text" readonly id="whSecret" class="form-input" style="font-size:12px;padding:8px 10px;font-family:monospace" value="{{ secret }}">
-          <button type="button" class="btn btn-secondary btn-sm" data-copy-from="whSecret" data-copy-label="Secret copied">{{ icon('copy', 13) }} Copy</button>
-        </div>
-      </div>
-    </div>
-    <div style="margin:0;padding-top:4px;min-width:0">
-      <div style="margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--color-hairline);display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="font-weight:600;font-size:15px;color:var(--color-ink);display:flex;align-items:center;gap:8px"><span style="color:#8b5cf6;display:inline-flex">{{ icon('list', 16) }}</span> Active Destinations</div>
-        <span style="font-size:12px;font-weight:600;background:#f1f5f9;color:var(--color-ink-mute);padding:2px 8px;border-radius:12px;flex-shrink:0">{{ ep_total }} Total</span>
-      </div>
-      <div style="min-width:0">
-        {% if ep_total == 0 %}
-        <div style="text-align:center;padding:32px 16px;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;margin-bottom:24px">
-          <div style="width:38px;height:38px;background:#e2e8f0;color:#64748b;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px">{{ icon('webhook', 18) }}</div>
-          <div style="font-weight:600;font-size:13.5px;color:var(--color-ink)">No webhook endpoints configured</div>
-          <div style="font-size:12px;color:var(--color-ink-mute);margin-top:4px">Add your first endpoint below to start receiving real-time payment notifications.</div>
-        </div>
-        {% else %}
-        <div style="margin-bottom:24px">
-          {% if default_url %}
-          <div class="endpoint-item"><div class="ep-main"><div class="ep-name">Default endpoint</div><div class="ep-url" title="{{ default_url }}">{{ default_url }}</div></div></div>
-          {% endif %}
-          {% for ep in endpoints %}
-          <div class="endpoint-item"><div class="ep-main"><div class="ep-name">{{ ep.name }}</div><div class="ep-url" title="{{ ep.url }}">{{ ep.url }}</div></div>
-            <form method="post" action="{{ url_for('delete_webhook_endpoint', eid=ep.eid) }}" class="inline-form"><input type="hidden" name="csrf" value="{{ csrf }}">
-              <button type="submit" class="btn btn-danger btn-sm" style="display:inline-flex;align-items:center;gap:4px" data-confirm="Remove this endpoint?">{{ icon('trash', 13) }} Delete</button></form></div>
-          {% endfor %}
-        </div>
-        {% endif %}
-        <div class="add-endpoint-box">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><span style="color:#8b5cf6;display:inline-flex">{{ icon('plus', 16) }}</span><span style="font-weight:600;font-size:13.5px;color:var(--color-ink)">Add New Webhook Endpoint</span></div>
-          <form method="post" action="{{ url_for('add_webhook_endpoint') }}">
-            <input type="hidden" name="csrf" value="{{ csrf }}">
-            <div class="form-group" style="margin-bottom:12px">
-              <label class="form-label" style="font-size:12px" for="endpoint_name">Endpoint Name / Label</label>
-              <input type="text" id="endpoint_name" name="endpoint_name" class="form-input" placeholder="e.g. Primary Store, Telegram Bot, Backup Server" maxlength="40" required style="font-size:13px;padding:9px 12px;width:100%;box-sizing:border-box">
-            </div>
-            <div class="form-group" style="margin-bottom:16px">
-              <label class="form-label" style="font-size:12px" for="endpoint_url">Webhook Destination URL</label>
-              <input type="url" id="endpoint_url" name="endpoint_url" class="form-input" placeholder="https://yourdomain.com/api/webhook" required style="font-size:13px;padding:9px 12px;width:100%;box-sizing:border-box">
-              <div style="font-size:11px;color:var(--color-ink-mute);margin-top:5px">Must be a valid https URL. Private and loopback addresses are blocked.</div>
-            </div>
-            <button type="submit" class="btn btn-secondary" style="width:100%;justify-content:center;font-size:13px;font-weight:600;padding:9px 16px">{{ icon('plus', 15) }} Add Webhook Endpoint</button>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+import logging
+import os
+from datetime import timedelta
 
-<div class="card" style="margin-top:24px;padding:0;overflow:hidden;min-width:0;max-width:100%">
-  <div class="log-card-header" style="padding:20px 24px;border-bottom:1px solid var(--color-hairline);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
-    <div>
-      <div class="card-title" style="justify-content:flex-start;gap:8px;margin:0"><span style="color:#8b5cf6;display:inline-flex">{{ icon('send', 18) }}</span> Delivery Logs</div>
-      <div class="card-sub" style="margin-top:4px">History of webhook dispatch attempts to your endpoints.</div>
-    </div>
-    <div class="log-filters">
-      <a href="{{ url_for('webhooks_page', filter='all') }}" class="log-filter-btn {{ 'active' if flt == 'all' }}">All <span class="count-badge">{{ counts.all }}</span></a>
-      <a href="{{ url_for('webhooks_page', filter='success') }}" class="log-filter-btn {{ 'active' if flt == 'success' }}">Success (2xx) <span class="count-badge">{{ counts.success }}</span></a>
-      <a href="{{ url_for('webhooks_page', filter='failed') }}" class="log-filter-btn {{ 'active' if flt == 'failed' }}">Failed <span class="count-badge">{{ counts.failed }}</span></a>
-    </div>
-  </div>
-  <div class="desktop-log-wrapper">
-    <table class="desktop-log-table">
-      <thead><tr><th>DATE &amp; TIME</th><th>ENDPOINT URL</th><th>STATUS</th><th style="text-align:right;padding-right:24px">PAYLOAD / RESPONSE</th></tr></thead>
-      <tbody>
-      {% for x in logs %}
-      <tr>
-        <td class="tnum" style="white-space:nowrap;font-size:12.5px">{{ x.created | istlog }}</td>
-        <td><div style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-family:monospace;color:var(--color-ink-secondary)" title="{{ x.url }}">{{ x.url }}</div></td>
-        <td><span class="status-badge status-{{ x.kind }}">{{ icon('check' if x.kind == 'success' else ('clock' if x.kind == 'pending' else 'ban'), 12) }} {{ x.label }}</span></td>
-        <td style="text-align:right;padding-right:24px"><button type="button" class="btn btn-secondary btn-sm" data-log="{{ loop.index0 }}" style="display:inline-flex;align-items:center;gap:4px">{{ icon('eye', 13) }} View Details</button></td>
-      </tr>
-      {% else %}<tr><td colspan="4"><div class="empty-row">No deliveries yet. They appear here after a payment succeeds.</div></td></tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div class="mobile-log-list">
-    {% for x in logs %}
-    <div class="mobile-log-item">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="tnum" style="font-size:12px">{{ x.created | istlog }}</span><span class="status-badge status-{{ x.kind }}">{{ x.label }}</span></div>
-      <div style="font-size:12px;font-family:monospace;color:var(--color-ink-secondary);word-break:break-all">{{ x.url }}</div>
-      <button type="button" class="btn btn-secondary btn-sm" data-log="{{ loop.index0 }}" style="justify-content:center">View Details</button>
-    </div>
-    {% else %}<div class="empty-row">No deliveries yet.</div>{% endfor %}
-  </div>
-  <div class="pagination-bar">
-    <div class="pagination-info">{% if total %}Showing <strong>{{ first }}&ndash;{{ last }}</strong> of <strong>{{ total }}</strong> logs{% else %}No logs{% endif %}</div>
-    <div class="pagination-nav">
-      <a href="{{ url_for('webhooks_page', filter=flt, page=page-1) }}" class="pagination-btn {{ 'disabled' if page <= 1 }}">{{ icon('chev-l', 14) }} Previous</a>
-      <span style="font-size:12px;color:var(--color-ink-mute);padding:0 4px">Page {{ page }} of {{ pages }}</span>
-      <a href="{{ url_for('webhooks_page', filter=flt, page=page+1) }}" class="pagination-btn {{ 'disabled' if page >= pages }}">Next {{ icon('chev-r', 14) }}</a>
-    </div>
-  </div>
-</div>
+import requests
+from pymongo import ReturnDocument
 
-<div class="fg-modal" id="logModal" role="dialog" aria-modal="true" aria-labelledby="logModalTitle">
-  <div class="fg-modal-box">
-    <div class="fg-modal-head"><strong id="logModalTitle">Delivery details</strong><button type="button" class="mobile-menu-btn" id="logModalClose" aria-label="Close" style="color:var(--color-ink);background:#f1f5f9;border-color:var(--color-hairline)">{{ icon('x', 16) }}</button></div>
-    <div class="fg-modal-body">
-      <dl class="fg-kv" id="logKv"></dl>
-      <div style="font-size:12px;font-weight:600;color:var(--color-ink-mute)">Payload sent</div><pre id="logPayload"></pre>
-      <div style="font-size:12px;font-weight:600;color:var(--color-ink-mute)">Response from your server</div><pre id="logResponse"></pre>
-      <form method="post" id="retryForm" class="inline-form" style="display:none"><input type="hidden" name="csrf" value="{{ csrf }}"><button type="submit" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:4px">{{ icon('retry', 13) }} Retry delivery</button></form>
-    </div>
-  </div>
-</div>
-{% endblock %}
-{% block scripts %}
-<script>
-(function () {
-  var LOGS = {{ logs_js|tojson }}, RETRY = {{ url_for('retry_delivery', did='DID')|tojson }};
-  var modal = document.getElementById('logModal');
-  function row(k, v) { var a = document.createElement('dt'), b = document.createElement('dd'); a.textContent = k; b.textContent = v; var kv = document.getElementById('logKv'); kv.appendChild(a); kv.appendChild(b); }
-  document.addEventListener('click', function (e) {
-    var b = e.target.closest('[data-log]');
-    if (!b) return;
-    var x = LOGS[+b.getAttribute('data-log')]; if (!x) return;
-    document.getElementById('logKv').innerHTML = '';
-    row('Endpoint', x.name); row('URL', x.url); row('Status', x.label); row('Attempts', String(x.attempts));
-    row('Sent', x.when); if (x.order_id) row('Order', x.order_id); if (x.error) row('Error', x.error);
-    document.getElementById('logPayload').textContent = x.payload || '(empty)';
-    document.getElementById('logResponse').textContent = x.response || '(no response body)';
-    var rf = document.getElementById('retryForm');
-    if (x.kind === 'failed' && x.did) { rf.action = RETRY.replace('DID', x.did); rf.style.display = 'inline'; } else { rf.style.display = 'none'; }
-    modal.classList.add('open');
-  });
-  function close() { modal.classList.remove('open'); }
-  document.getElementById('logModalClose').addEventListener('click', close);
-  modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
-})();
-</script>
-{% endblock %}
+from security import decrypt, is_safe_webhook_url, sign_webhook
+from services import utcnow
+
+try:
+    from famway_mailer import famway_mail_async
+except ImportError:  # mailer file missing: webhooks still work, just no emails
+    def famway_mail_async(*_args, **_kwargs):
+        return None
+
+log = logging.getLogger("webhooks")
+
+FAIL_ALERT_AFTER = 3  # email the merchant once an endpoint has failed this many attempts in a row
+
+BACKOFF_SECONDS = [10, 30, 120, 600, 3600, 21600]  # 6 attempts total
+
+
+def deliver_due(db, limit: int = 20) -> int:
+    sent = 0
+    for _ in range(limit):
+        now = utcnow()
+        # Claim atomically and push next_attempt out as a lease so two workers never double-send.
+        delivery = db.deliveries.find_one_and_update(
+            {"status": "pending", "next_attempt": {"$lte": now}},
+            {"$set": {"next_attempt": now + timedelta(seconds=60)}},
+            sort=[("next_attempt", 1)], return_document=ReturnDocument.AFTER)
+        if delivery is None:
+            break
+        attempt_delivery(db, delivery)
+        sent += 1
+    return sent
+
+
+def attempt_delivery(db, delivery: dict):
+    merchant = db.merchants.find_one({"_id": delivery["merchant_id"]})
+    attempts = delivery["attempts"] + 1
+    ok, error = False, ""
+    status_code, resp_text = None, None
+    if merchant is None or not merchant.get("webhook_secret_enc"):
+        error = "merchant or webhook secret missing"
+    else:
+        safe, reason = is_safe_webhook_url(delivery["url"])
+        if not safe:
+            error = reason
+        else:
+            body = delivery["body"].encode()
+            ts = str(int(utcnow().timestamp()))
+            secret = decrypt(merchant["webhook_secret_enc"])
+            try:
+                resp = requests.post(
+                    delivery["url"], data=body, timeout=8, allow_redirects=False,
+                    headers={"Content-Type": "application/json", "X-Timestamp": ts,
+                             "X-Signature": "sha256=" + sign_webhook(secret, ts, body),
+                             "User-Agent": "upibridge-webhook/1.0"})
+                status_code = resp.status_code
+                text = getattr(resp, "text", "")
+                resp_text = text[:500] if isinstance(text, str) else ""
+                ok = 200 <= resp.status_code < 300
+                error = "" if ok else f"HTTP {resp.status_code}"
+            except requests.RequestException as exc:
+                error = str(exc)[:150]
+
+    update = {"attempts": attempts, "last_error": error or None, "last_attempt_at": utcnow(),
+              "last_status": status_code, "last_response": resp_text}
+    if ok:
+        update["status"] = "done"
+    elif attempts >= len(BACKOFF_SECONDS):
+        update["status"] = "failed"
+    else:
+        update["next_attempt"] = utcnow() + timedelta(seconds=BACKOFF_SECONDS[attempts - 1])
+    db.deliveries.update_one({"_id": delivery["_id"]}, {"$set": update})
+    if not ok:
+        log.info("webhook %s attempt %s failed: %s", delivery["order_id"], attempts, error)
+    _webhook_health_mail(db, merchant, delivery, ok, attempts, status_code, error)
+
+
+def _webhook_health_mail(db, merchant, delivery, ok: bool, attempts: int, status_code, error: str):
+    """Email 'webhook failing' once per outage and 'webhook recovered' when it works again. Never raises."""
+    try:
+        if not merchant or not merchant.get("email"):
+            return
+        url = delivery["url"]
+        key = f"{merchant['_id']}|{url}"
+        now = utcnow()
+        site = os.environ.get("BASE_URL", "https://famgateway.in").rstrip("/")
+        ist = now + timedelta(hours=5, minutes=30)
+        when = f"{ist.day} {ist:%b %Y}, {ist:%I:%M %p} IST"
+        name = merchant.get("full_name") or merchant.get("payee_name") or merchant["email"].split("@")[0]
+        state = db.webhook_state.find_one({"_id": key}) or {}
+        if not ok and attempts >= FAIL_ALERT_AFTER and not state.get("failing"):
+            db.webhook_state.replace_one({"_id": key}, {"_id": key, "failing": True, "since": now}, upsert=True)
+            famway_mail_async("webhook_failing", merchant["email"], name, {
+                "endpoint_url": url, "failed_attempts": str(attempts),
+                "status_code": str(status_code) if status_code else (error or "No response"),
+                "time": when, "logs_url": site + "/webhooks"})
+        elif ok and state.get("failing"):
+            since = state.get("since") or now
+            delivered = db.deliveries.count_documents(
+                {"merchant_id": merchant["_id"], "url": url, "status": "done", "last_attempt_at": {"$gte": since}})
+            db.webhook_state.replace_one({"_id": key}, {"_id": key, "failing": False, "since": None}, upsert=True)
+            famway_mail_async("webhook_recovered", merchant["email"], name, {
+                "endpoint_url": url, "delivered_events": str(max(delivered, 1)),
+                "time": when, "logs_url": site + "/webhooks"})
+    except Exception:  # noqa: BLE001 - a mail problem must never break webhook delivery
+        log.exception("webhook health mail failed")
