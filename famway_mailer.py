@@ -97,10 +97,12 @@ log = logging.getLogger("famway_mailer")
 def famway_mail(event: str, to_email: str, to_name: str = "", params: dict | None = None) -> dict:
     api_key = os.getenv("BREVO_API_KEY")
     if not api_key:
+        log.error("famway_mail(%s): BREVO_API_KEY set nahi hai", event)
         return {"ok": False, "message_id": None, "error": "BREVO_API_KEY set nahi hai"}
 
     template_id = TEMPLATES.get(event, 0)
     if not template_id:
+        log.error("famway_mail(%s): template ID missing (famway-template-ids.json check karo)", event)
         return {"ok": False, "message_id": None, "error": f"Template ID missing: {event}"}
 
     # Common params jo har template me chahiye
@@ -126,6 +128,7 @@ def famway_mail(event: str, to_email: str, to_name: str = "", params: dict | Non
         return {"ok": False, "message_id": None, "error": str(e)}
 
     if 200 <= r.status_code < 300:
+        log.warning("famway_mail(%s) sent to %s (Brevo messageId %s)", event, to_email, data.get("messageId"))
         return {"ok": True, "message_id": data.get("messageId"), "error": None}
 
     log.error("Brevo error (%s): HTTP %s %s", event, r.status_code, r.text)
@@ -135,6 +138,11 @@ def famway_mail(event: str, to_email: str, to_name: str = "", params: dict | Non
 def famway_mail_async(event: str, to_email: str, to_name: str = "", params: dict | None = None) -> None:
     """Background thread me mail bhejta hai, request slow nahi hoti.
     Result nahi milta, fail hone par sirf log hota hai."""
-    threading.Thread(
-        target=famway_mail, args=(event, to_email, to_name, params), daemon=True
-    ).start()
+    def _run():
+        try:
+            famway_mail(event, to_email, to_name, params)
+        except Exception:  # noqa: BLE001
+            log.exception("famway_mail(%s) crashed", event)
+
+    log.warning("famway_mail(%s) queued for %s", event, to_email)
+    threading.Thread(target=_run, daemon=True).start()
