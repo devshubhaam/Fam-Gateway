@@ -39,8 +39,8 @@ class AdminLogin(unittest.TestCase):
         self.assertEqual(len(list(self.db.merchants.find({}))), 1)
         page = self.c.get("/dashboard")
         self.assertEqual(page.status_code, 200)
-        self.assertIn(b"Total revenue", page.data)
-        self.assertIn(b"Payment settings", page.data)
+        self.assertIn(b"Total Revenue", page.data)
+        self.assertIn(b"Quick Setup Guide", page.data)
 
     def test_second_login_reuses_account(self):
         self.login("owner@example.com", "S3cret-pass!")
@@ -58,4 +58,3 @@ class AdminLogin(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-  
