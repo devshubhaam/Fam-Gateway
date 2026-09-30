@@ -44,8 +44,7 @@
         {% else %}
         <div style="margin-bottom:24px">
           {% if default_url %}
-          <div class="endpoint-item"><div class="ep-main"><div class="ep-name">Default endpoint</div><div class="ep-url" title="{{ default_url }}">{{ default_url }}</div></div>
-            <a class="btn btn-secondary btn-sm" href="{{ url_for('dashboard') }}#settings">Edit in settings</a></div>
+          <div class="endpoint-item"><div class="ep-main"><div class="ep-name">Default endpoint</div><div class="ep-url" title="{{ default_url }}">{{ default_url }}</div></div></div>
           {% endif %}
           {% for ep in endpoints %}
           <div class="endpoint-item"><div class="ep-main"><div class="ep-name">{{ ep.name }}</div><div class="ep-url" title="{{ ep.url }}">{{ ep.url }}</div></div>
