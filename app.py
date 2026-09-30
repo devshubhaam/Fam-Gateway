@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 import logging
@@ -15,7 +16,9 @@ from functools import wraps
 from flask import (Flask, abort, flash, g, jsonify, redirect, render_template, request,
                    session, url_for, Response)
 import requests
+from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -238,12 +241,13 @@ def healthz():
 
 
 # ---------------------------------------------------------------- auth
-def create_merchant(email: str, password_hash: str):
+def create_merchant(email: str, password_hash: str, verified: bool = True):
     """Insert a new merchant. Returns (merchant, plaintext_api_key). Raises DuplicateKeyError."""
     api_key = security.new_api_key()
     merchant = {
         "_id": "m_" + secrets.token_hex(8),
         "email": email,
+        "email_verified": verified,
         "password_hash": password_hash,
         "created_at": services.utcnow(),
         "upi_id": "", "payee_name": "", "webhook_url": "",
@@ -273,20 +277,23 @@ def register():
             flash("Enter a valid email and a password of at least 8 characters.", "error")
             return render_template("auth.html", mode="register"), 400
         try:
-            merchant, api_key = create_merchant(email, generate_password_hash(password))
+            merchant, api_key = create_merchant(email, generate_password_hash(password), verified=False)
         except DuplicateKeyError:
-            flash("That email is already registered.", "error")
+            old = get_db().merchants.find_one({"email": email}) or {}
+            if old.get("email_verified") is False:
+                flash("This email is registered but not verified yet. Log in to get a new code.", "error")
+            else:
+                flash("That email is already registered.", "error")
             return render_template("auth.html", mode="register"), 409
         except Exception as exc:  # noqa: BLE001 - show the reason on screen instead of a blank 500
             log.exception("register failed")
             flash("Server error: %s: %s" % (type(exc).__name__, str(exc)[:200]), "error")
             return render_template("auth.html", mode="register"), 500
         session.clear()
-        session["mid"] = merchant["_id"]
+        session["otp_mid"] = merchant["_id"]      # not logged in until the email is verified
         session["new_api_key"] = api_key
-        send_mail("welcome", email, display_name(merchant),
-                  dashboard_url=_dash_url(), docs_url=base_url() + url_for("docs"))
-        return redirect(url_for("dashboard"))
+        _send_otp("signup", merchant)
+        return redirect(url_for("verify_email"))
     return render_template("auth.html", mode="register")
 
 
@@ -312,13 +319,283 @@ def login():
             return redirect(url_for("dashboard"))
         merchant = get_db().merchants.find_one({"email": email})
         if merchant and merchant.get("password_hash") and check_password_hash(merchant["password_hash"], request.form.get("password", "")):
-            session.clear()
-            session["mid"] = merchant["_id"]
-            _login_alert(merchant)
-            return redirect(url_for("dashboard"))
+            return _after_password(merchant)
         flash("Wrong email or password.", "error")
         return render_template("auth.html", mode="login"), 401
     return render_template("auth.html", mode="login")
+
+
+# ---------------------------------------------------------------- OTP (signup verify / login 2-step / forgot password)
+OTP_TTL_MIN = 10
+OTP_MAX_ATTEMPTS = 5
+OTP_RESEND_SECONDS = 45
+LOGIN_OTP_ON = os.environ.get("LOGIN_OTP", "1") == "1"      # set LOGIN_OTP=0 on Koyeb to switch 2-step login off
+TRUST_DAYS = 30
+_trust_signer = URLSafeTimedSerializer(app.config["SECRET_KEY"], salt="trusted-device")
+
+OTP_MESSAGES = {
+    "wrong": "That code is not correct.",
+    "expired": "This code has expired. Request a new one.",
+    "locked": "Too many wrong attempts. Request a new code.",
+}
+
+
+def _aware(dt):
+    return dt if dt.tzinfo else dt.replace(tzinfo=services.utcnow().tzinfo)
+
+
+def _otp_hash(purpose: str, email: str, code: str) -> str:
+    raw = f"{app.config['SECRET_KEY']}|{purpose}|{email}|{code}"
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def issue_otp(purpose: str, email: str):
+    """Create a fresh 6-digit code. Returns None if one was sent less than OTP_RESEND_SECONDS ago."""
+    col = get_db().otps
+    key = f"{purpose}:{email}"
+    now = services.utcnow()
+    cur = col.find_one({"_id": key})
+    if cur and (now - _aware(cur["created_at"])).total_seconds() < OTP_RESEND_SECONDS:
+        return None
+    code = f"{secrets.randbelow(10 ** 6):06d}"
+    col.replace_one({"_id": key}, {
+        "_id": key, "purpose": purpose, "email": email, "code_hash": _otp_hash(purpose, email, code),
+        "attempts": 0, "created_at": now, "expires_at": now + timedelta(minutes=OTP_TTL_MIN)}, upsert=True)
+    return code
+
+
+def check_otp(purpose: str, email: str, code: str) -> str:
+    """Returns 'ok' | 'wrong' | 'expired' | 'locked'. A correct code is single-use."""
+    col = get_db().otps
+    key = f"{purpose}:{email}"
+    code = re.sub(r"\D", "", code or "")
+    doc = col.find_one_and_update({"_id": key}, {"$inc": {"attempts": 1}}, return_document=ReturnDocument.AFTER)
+    if not doc:
+        return "wrong"
+    if _aware(doc["expires_at"]) < services.utcnow():
+        col.delete_one({"_id": key})
+        return "expired"
+    if doc["attempts"] > OTP_MAX_ATTEMPTS:
+        col.delete_one({"_id": key})
+        return "locked"
+    if len(code) == 6 and secrets.compare_digest(doc["code_hash"], _otp_hash(purpose, email, code)):
+        col.delete_one({"_id": key})
+        return "ok"
+    return "wrong"
+
+
+def _send_otp(purpose: str, merchant: dict) -> bool:
+    code = issue_otp(purpose, merchant["email"])
+    if not code:
+        return False
+    send_mail("otp", merchant["email"], display_name(merchant), otp=code, expiry_minutes=OTP_TTL_MIN)
+    return True
+
+
+def _trusted_device(merchant: dict) -> bool:
+    token = request.cookies.get("fw_td_" + merchant["_id"], "")
+    try:
+        return _trust_signer.loads(token, max_age=TRUST_DAYS * 86400) == merchant["_id"]
+    except BadSignature:
+        return False
+
+
+def _finish_login(merchant: dict):
+    session.clear()
+    session["mid"] = merchant["_id"]
+    _login_alert(merchant)
+    return redirect(url_for("dashboard"))
+
+
+def _after_password(merchant: dict):
+    """A correct password still has to pass email verification / 2-step OTP."""
+    if merchant.get("email_verified") is False:      # old accounts have no flag and count as verified
+        session.clear()
+        session["otp_mid"] = merchant["_id"]
+        _send_otp("signup", merchant)
+        flash("Please verify your email. We sent you a code.", "ok")
+        return redirect(url_for("verify_email"))
+    if LOGIN_OTP_ON and not _trusted_device(merchant):
+        session.clear()
+        session["otp_login_mid"] = merchant["_id"]
+        _send_otp("login", merchant)
+        return redirect(url_for("login_otp"))
+    return _finish_login(merchant)
+
+
+def _pending(session_key: str):
+    mid = session.get(session_key)
+    return get_db().merchants.find_one({"_id": mid}) if mid else None
+
+
+def _otp_page(mode: str, status: int = 200, **ctx):
+    return render_template("otp.html", mode=mode, **ctx), status
+
+
+# --- signup: verify email
+@app.route("/verify-email", methods=["GET", "POST"])
+def verify_email():
+    m = _pending("otp_mid")
+    if not m or m.get("email_verified") is not False:
+        return redirect(url_for("login"))
+    page = dict(email=m["email"], action=url_for("verify_email"), resend=url_for("verify_email_resend"))
+    if request.method == "POST":
+        if rate_limited("otpv:" + (request.remote_addr or ""), 20, 600):
+            flash("Too many attempts. Try again in a few minutes.", "error")
+            return _otp_page("verify_signup", 429, **page)
+        res = check_otp("signup", m["email"], request.form.get("code", ""))
+        if res != "ok":
+            flash(OTP_MESSAGES[res], "error")
+            return _otp_page("verify_signup", 400, **page)
+        get_db().merchants.update_one({"_id": m["_id"]}, {"$set": {"email_verified": True}})
+        key = session.get("new_api_key")
+        session.clear()
+        session["mid"] = m["_id"]
+        if key:
+            session["new_api_key"] = key
+        _login_alert(m)  # first login: only records this IP
+        send_mail("welcome", m["email"], display_name(m),
+                  dashboard_url=_dash_url(), docs_url=base_url() + url_for("docs"))
+        return redirect(url_for("dashboard"))
+    return _otp_page("verify_signup", **page)
+
+
+@app.post("/verify-email/resend")
+def verify_email_resend():
+    m = _pending("otp_mid")
+    if not m:
+        return redirect(url_for("login"))
+    if rate_limited("otpr:" + m["email"], 5, 3600):
+        flash("Too many codes requested. Try again later.", "error")
+    elif _send_otp("signup", m):
+        flash("A new code has been sent.", "ok")
+    else:
+        flash("Please wait a few seconds before requesting another code.", "error")
+    return redirect(url_for("verify_email"))
+
+
+# --- login: 2-step OTP
+@app.route("/login/otp", methods=["GET", "POST"])
+def login_otp():
+    m = _pending("otp_login_mid")
+    if not m:
+        return redirect(url_for("login"))
+    page = dict(email=m["email"], action=url_for("login_otp"), resend=url_for("login_otp_resend"))
+    if request.method == "POST":
+        if rate_limited("otpl:" + (request.remote_addr or ""), 20, 600):
+            flash("Too many attempts. Try again in a few minutes.", "error")
+            return _otp_page("login", 429, **page)
+        res = check_otp("login", m["email"], request.form.get("code", ""))
+        if res != "ok":
+            flash(OTP_MESSAGES[res], "error")
+            return _otp_page("login", 400, **page)
+        resp = _finish_login(m)
+        if request.form.get("trust"):
+            resp.set_cookie("fw_td_" + m["_id"], _trust_signer.dumps(m["_id"]), max_age=TRUST_DAYS * 86400,
+                            httponly=True, samesite="Lax", secure=app.config["SESSION_COOKIE_SECURE"])
+        return resp
+    return _otp_page("login", **page)
+
+
+@app.post("/login/otp/resend")
+def login_otp_resend():
+    m = _pending("otp_login_mid")
+    if not m:
+        return redirect(url_for("login"))
+    if rate_limited("otpr:" + m["email"], 5, 3600):
+        flash("Too many codes requested. Try again later.", "error")
+    elif _send_otp("login", m):
+        flash("A new code has been sent.", "ok")
+    else:
+        flash("Please wait a few seconds before requesting another code.", "error")
+    return redirect(url_for("login_otp"))
+
+
+# --- forgot password (3 steps: email -> code -> new password)
+@app.route("/forgot", methods=["GET", "POST"])
+def forgot():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        if rate_limited("forgot:" + (request.remote_addr or ""), 5, 3600):
+            flash("Too many attempts. Try again later.", "error")
+            return _otp_page("forgot", 429, action=url_for("forgot"))
+        if not EMAIL_RE.match(email):
+            flash("Enter a valid email address.", "error")
+            return _otp_page("forgot", 400, action=url_for("forgot"))
+        m = get_db().merchants.find_one({"email": email})
+        if m and not rate_limited("otpr:" + email, 5, 3600):
+            _send_otp("reset", m)
+        # same answer whether or not the account exists, so emails cannot be probed
+        session.pop("reset_ok", None)
+        session["reset_email"] = email
+        flash("If an account exists for that email, we have sent a code.", "ok")
+        return redirect(url_for("forgot_verify"))
+    return _otp_page("forgot", action=url_for("forgot"))
+
+
+@app.route("/forgot/verify", methods=["GET", "POST"])
+def forgot_verify():
+    email = session.get("reset_email")
+    if not email:
+        return redirect(url_for("forgot"))
+    page = dict(email=email, action=url_for("forgot_verify"), resend=url_for("forgot_resend"))
+    if request.method == "POST":
+        if rate_limited("otpf:" + (request.remote_addr or ""), 20, 600):
+            flash("Too many attempts. Try again in a few minutes.", "error")
+            return _otp_page("forgot_verify", 429, **page)
+        res = check_otp("reset", email, request.form.get("code", ""))
+        if res != "ok":
+            flash(OTP_MESSAGES[res], "error")
+            return _otp_page("forgot_verify", 400, **page)
+        session["reset_ok"] = email
+        session["reset_at"] = time.time()
+        return redirect(url_for("forgot_reset"))
+    return _otp_page("forgot_verify", **page)
+
+
+@app.post("/forgot/resend")
+def forgot_resend():
+    email = session.get("reset_email")
+    if not email:
+        return redirect(url_for("forgot"))
+    m = get_db().merchants.find_one({"email": email})
+    if rate_limited("otpr:" + email, 5, 3600):
+        flash("Too many codes requested. Try again later.", "error")
+    elif m and _send_otp("reset", m):
+        flash("A new code has been sent.", "ok")
+    else:
+        flash("If an account exists for that email, we have sent a code.", "ok")
+    return redirect(url_for("forgot_verify"))
+
+
+@app.route("/forgot/reset", methods=["GET", "POST"])
+def forgot_reset():
+    email = session.get("reset_ok")
+    if not email or time.time() - session.get("reset_at", 0) > 900:
+        session.pop("reset_ok", None)
+        flash("Your reset session expired. Please start again.", "error")
+        return redirect(url_for("forgot"))
+    page = dict(action=url_for("forgot_reset"))
+    if request.method == "POST":
+        pw = request.form.get("password", "")
+        if len(pw) < 8:
+            flash("Password must be at least 8 characters.", "error")
+            return _otp_page("reset", 400, **page)
+        if pw != request.form.get("confirm", ""):
+            flash("The two passwords do not match.", "error")
+            return _otp_page("reset", 400, **page)
+        m = get_db().merchants.find_one({"email": email})
+        if not m:
+            return redirect(url_for("forgot"))
+        get_db().merchants.update_one({"_id": m["_id"]}, {"$set": {
+            "password_hash": generate_password_hash(pw), "email_verified": True}})
+        send_mail("password_changed", email, display_name(m), time=_now_ist(), device=_device(),
+                  location="IP " + (request.remote_addr or "Unknown"),
+                  secure_url=base_url() + url_for("profile", tab="security"))
+        session.clear()
+        flash("Password updated. Log in with your new password.", "ok")
+        return redirect(url_for("login"))
+    return _otp_page("reset", **page)
 
 
 # ---------------------------------------------------------------- Google sign-in
