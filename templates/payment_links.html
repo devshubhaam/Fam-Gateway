@@ -8,7 +8,7 @@
     <div class="card-title" style="justify-content:flex-start!important"><span style="color:var(--color-primary);display:inline-flex">{{ icon('link', 18) }}</span> <span>Generate Payment Link</span></div>
     <div class="card-sub">Create an instant checkout link with auto-generated ID to share with your customers.</div>
   </div>
-  {% if not has_upi %}<div class="fg-flash error" style="max-width:480px">Save your UPI ID in <a href="{{ url_for('dashboard') }}#settings" style="color:inherit;text-decoration:underline">Payment settings</a> before creating a link.</div>{% endif %}
+  {% if not has_upi %}<div class="fg-flash error" style="max-width:480px">Save your UPI ID in <a href="{{ url_for('integrations') }}" style="color:inherit;text-decoration:underline">Integrations</a> before creating a link.</div>{% endif %}
   <form method="post" action="{{ url_for('create_payment_link') }}" class="generate-link-form">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <div class="input-currency-box">
