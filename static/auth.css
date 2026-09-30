@@ -1,0 +1,79 @@
+/* Register / Login / OTP pages. Values copied 1:1 from the FamGateway Register and Login pages. */
+@font-face{font-family:"Poppins";font-style:normal;font-weight:300;font-display:swap;src:url(fonts/poppins-300.woff2) format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-weight:400;font-display:swap;src:url(fonts/poppins-400.woff2) format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-weight:500;font-display:swap;src:url(fonts/poppins-500.woff2) format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-weight:600;font-display:swap;src:url(fonts/poppins-600.woff2) format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-weight:700;font-display:swap;src:url(fonts/poppins-700.woff2) format("woff2")}
+
+:root{--blue-600:#2563eb;--blue-700:#1d4ed8;--ink-200:#94a3b8;--color-primary:var(--blue-600);--color-primary-glow:rgba(37,99,235,0.14);--font:"Poppins",system-ui,-apple-system,sans-serif}
+html{background-color:#f6f8fb}
+body{font-size:14px;font-weight:400;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+img{max-width:100%}
+input,button{font-family:var(--font)}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{display:flex;min-height:100vh;background:#f6f8fb;color:#0f172a;font-family:"Poppins",sans-serif}
+.auth-left{display:none;flex:0 0 460px;background:linear-gradient(160deg,#0f172a 0%,#1e3a8a 60%,#1d4ed8 100%);position:relative;overflow:hidden;padding:48px 52px;flex-direction:column;justify-content:space-between}
+@media (min-width:900px){.auth-left{display:flex}}
+.auth-left-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(59,130,246,0.25) 0%,transparent 55%),radial-gradient(ellipse at 80% 80%,rgba(16,185,129,0.15) 0%,transparent 50%)}
+.auth-left-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);background-size:40px 40px}
+.auth-left-content{position:relative;z-index:1}
+.auth-left-brand{display:flex;align-items:center;gap:12px;margin-bottom:52px}
+.auth-left-heading{font-size:36px;font-weight:800;line-height:1.2;letter-spacing:-1px;color:#fff;margin-bottom:18px}
+.auth-left-heading span{background:linear-gradient(90deg,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.auth-register .auth-left-heading span{background:linear-gradient(90deg,#34d399,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.auth-left-desc{font-size:15px;color:#94a3b8;line-height:1.65;margin-bottom:40px}
+.auth-features{display:flex;flex-direction:column;gap:14px}
+.auth-feature{display:flex;align-items:center;gap:14px;font-size:14px;color:#e2e8f0}
+.auth-feature-dot{width:28px;height:28px;border-radius:50%;background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#34d399}
+.auth-left-footer{position:relative;z-index:1;font-size:12px;color:#475569}
+.auth-right{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:40px 24px;background:#f6f8fb;position:relative;overflow-y:auto}
+.auth-back{position:absolute;top:24px;left:24px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#64748b;text-decoration:none;transition:color 0.15s;padding:7px 12px;border-radius:9px;border:1px solid #e2e8f0;background:#ffffff;box-shadow:0 1px 2px rgba(0,0,0,0.04)}
+.auth-back:hover{color:#0f172a;background:#f1f5f9}
+.auth-form-card{width:100%;max-width:420px;background:#ffffff;border:1px solid #e2e8f0;border-radius:20px;padding:38px 34px;box-shadow:0 12px 32px -4px rgba(15,23,42,0.08),0 4px 12px -2px rgba(15,23,42,0.04)}
+.auth-register .auth-form-card{max-width:440px}
+@media (max-width:600px){.auth-back{position:relative;top:auto;left:auto;align-self:flex-start;margin-bottom:16px}.auth-form-card{padding:28px 20px;border-radius:16px;margin-top:0}}
+.auth-form-header{margin-bottom:28px;text-align:center}
+.auth-register .auth-form-header{margin-bottom:24px}
+.auth-form-logo{border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px auto}
+.auth-register .auth-form-logo{margin:0 auto 18px auto}
+.auth-form-title{font-size:24px;font-weight:800;letter-spacing:-0.6px;color:#0f172a;margin-bottom:6px}
+.auth-register .auth-form-title{font-size:22px;letter-spacing:-0.5px;margin-bottom:5px}
+.auth-form-subtitle{font-size:14px;color:#64748b}
+.form-group{margin-bottom:16px}
+.auth-register .form-group{margin-bottom:14px}
+.form-label{display:block;font-size:13px;font-weight:500;color:#334155;margin-bottom:6px;letter-spacing:0.01em}
+.form-input{width:100%;padding:11px 14px;border:1px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;background:#f8fafc;transition:all 0.15s;outline:none;font-family:"Poppins",sans-serif}
+.form-input:focus{border-color:#2563eb;background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,0.12)}
+.form-input::placeholder{color:#94a3b8}
+.phone-input-wrapper{display:flex;align-items:center;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;transition:all 0.15s}
+.phone-input-wrapper:focus-within{border-color:#2563eb;background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,0.12)}
+.phone-prefix{padding:11px 0 11px 14px;font-size:14px;color:#64748b;font-weight:500;user-select:none}
+.phone-input-wrapper input{width:100%;padding:11px 14px 11px 8px;border:none;outline:none;background:transparent;font-size:14px;color:#0f172a;font-family:"Poppins",sans-serif}
+.phone-input-wrapper input::placeholder{color:#94a3b8}
+.btn-auth{width:100%;padding:13px;background:#2563eb;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.15s;box-shadow:0 2px 8px rgba(37,99,235,0.3);margin-top:6px;font-family:"Poppins",sans-serif}
+.btn-auth:hover{background:#1d4ed8;transform:translateY(-1px);box-shadow:0 4px 16px rgba(37,99,235,0.4)}
+.btn-auth:active{transform:none;box-shadow:none}
+.auth-switch{text-align:center;margin-top:24px;font-size:14px;color:#64748b}
+.auth-register .auth-switch{margin-top:20px}
+.auth-switch a{color:#2563eb;font-weight:600;text-decoration:none}
+.auth-switch a:hover{text-decoration:underline}
+.terms-note{font-size:12px;color:#94a3b8;text-align:center;margin-top:14px;line-height:1.6}
+.terms-note a{color:var(--color-primary);text-decoration:none}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes dashFadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes dashFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes dashSlideRight{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:translateX(0)}}
+@media (prefers-reduced-motion:reduce){.dash-anim-up,.dash-anim-in{opacity:1!important;animation:none!important}}
+
+/* Server messages + small helpers (not in the saved pages: they only exist once the form is submitted) */
+.auth-alert{padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.5;margin-bottom:16px;border:1px solid}
+.auth-alert.error{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+.auth-alert.ok{background:#f0fdf4;border-color:#bbf7d0;color:#15803d}
+.btn-auth:disabled{opacity:.7;cursor:not-allowed;transform:none}
+.btn-auth .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:8px}
+.otp-code{font-size:30px;font-weight:700;letter-spacing:10px;text-align:center;padding:12px 8px 12px 18px}
+.otp-linkbtn{background:none;border:0;padding:0;font-size:14px;font-weight:600;color:#2563eb;cursor:pointer;font-family:"Poppins",sans-serif}
+.otp-linkbtn:hover{text-decoration:underline}
+.otp-hint{display:block;margin-top:8px;font-size:12.5px;color:#94a3b8}
