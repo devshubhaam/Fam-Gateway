@@ -264,8 +264,8 @@ class WebTests(unittest.TestCase):
 
     def test_full_api_flow(self):
         self.register()
-        page = self.c.get("/dashboard").get_data(as_text=True)
-        api_key = page.split('class="secret">')[1].split("<")[0]
+        page = self.c.get("/api-keys").get_data(as_text=True)
+        api_key = page.split('id="apiKeyText0"')[1].split('value="')[1].split('"')[0]
         self.assertTrue(api_key.startswith("sk_live_"))
         tok = page.split('name="csrf" value="')[1].split('"')[0]
         r = self.c.post("/dashboard/settings", data={"csrf": tok, "upi_id": "me@fam", "payee_name": "Me", "webhook_url": ""})
@@ -299,15 +299,15 @@ class WebTests(unittest.TestCase):
         m1 = make_merchant(self.db)
         o, _ = services.create_order(self.db, m1, 100)
         self.register()
-        page = self.c.get("/dashboard").get_data(as_text=True)
-        key = page.split('class="secret">')[1].split("<")[0]
+        page = self.c.get("/api-keys").get_data(as_text=True)
+        key = page.split('id="apiKeyText0"')[1].split('value="')[1].split('"')[0]
         r = appmod.app.test_client().get(f"/api/v1/orders/{o['order_id']}", headers={"Authorization": f"Bearer {key}"})
         self.assertEqual(r.status_code, 404)
 
     def test_ssrf_callback_rejected(self):
         self.register()
-        page = self.c.get("/dashboard").get_data(as_text=True)
-        key = page.split('class="secret">')[1].split("<")[0]
+        page = self.c.get("/api-keys").get_data(as_text=True)
+        key = page.split('id="apiKeyText0"')[1].split('value="')[1].split('"')[0]
         tok = page.split('name="csrf" value="')[1].split('"')[0]
         self.c.post("/dashboard/settings", data={"csrf": tok, "upi_id": "me@fam", "payee_name": "", "webhook_url": ""})
         r = appmod.app.test_client().post("/api/v1/orders", headers={"Authorization": f"Bearer {key}"},
