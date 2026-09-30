@@ -1,0 +1,241 @@
+{% extends "dash_base.html" %}
+{% block title %}My Profile{% endblock %}
+{% block pagehead %}<div class="dash-anim-right" style="margin-bottom:24px">
+  <h1 style="font-size:22px;font-weight:700;color:var(--color-ink);letter-spacing:-0.5px">Profile Settings</h1>
+  <p style="font-size:13px;color:var(--color-ink-mute);margin-top:4px">Manage your account details and custom brand QR avatar.</p>
+</div>{% endblock %}
+{% block content %}
+<div style="max-width:900px">
+  <div class="profile-tabs" role="tablist">
+    <button type="button" class="tab-btn {{ 'active' if tab == 'general' }}" data-tab="general">{{ icon('user', 16) }} General</button>
+    <button type="button" class="tab-btn {{ 'active' if tab == 'avatar' }}" data-tab="avatar">{{ icon('image', 16) }} Branding</button>
+    <button type="button" class="tab-btn {{ 'active' if tab == 'security' }}" data-tab="security">{{ icon('lock', 16) }} Security</button>
+    <button type="button" class="tab-btn {{ 'active' if tab == 'social' }}" data-tab="social">{{ icon('link', 16) }} Social Logins</button>
+  </div>
+
+  <div class="tab-pane {{ 'active' if tab == 'general' }}" id="tab-general">
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+        <div>
+          <div class="card-title" style="display:flex;align-items:center;gap:8px">{{ icon('user', 18) }} Personal Details</div>
+          <div class="card-sub">Update your personal information and contact details.</div>
+        </div>
+        <button type="button" class="btn btn-secondary" style="padding:6px 12px;font-weight:600;font-size:12px" data-open="editProfileModal">Edit Details</button>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <div class="kv-row"><div class="k">Merchant ID</div><div class="v" style="font-weight:700;font-family:monospace;font-size:15px;letter-spacing:1px">{{ m.merchant_no }}</div></div>
+        <div class="kv-row"><div class="k">Full Name</div><div class="v">{{ m.full_name or name }}</div></div>
+        <div class="kv-row"><div class="k">Phone Number</div><div class="v">{% if m.phone %}{{ m.phone }}{% else %}<span style="color:#9ca3af;font-size:13px;font-style:italic">Not provided</span>{% endif %}</div></div>
+        <div class="kv-row"><div class="k">Support / Contact</div><div class="v">{% if m.support_link %}{{ m.support_link }}{% else %}<span style="color:#9ca3af;font-size:13px;font-style:italic">Not provided</span>{% endif %}</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:24px">
+      <div class="card-header" style="margin-bottom:18px">
+        <div class="card-title" style="display:flex;align-items:center;gap:8px">{{ icon('mail', 18) }} Email Address</div>
+        <div class="card-sub">Manage the email address associated with your account.</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+        <div>
+          <div style="font-size:13px;color:var(--color-ink-mute);margin-bottom:4px">Current Email</div>
+          <div style="font-weight:600;font-size:15px;color:var(--color-ink)">{{ m.email }}</div>
+        </div>
+        <button type="button" class="btn btn-secondary" style="padding:8px 16px;font-weight:600" data-open="changeEmailModal">Change Email</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane {{ 'active' if tab == 'avatar' }}" id="tab-avatar">
+    <div class="card">
+      <div class="card-header" style="margin-bottom:18px">
+        <div class="card-title" style="display:flex;align-items:center;gap:8px">{{ icon('image', 18) }} Profile Avatar</div>
+        <div class="card-sub">This avatar automatically embeds in the center of your generated QR codes.</div>
+      </div>
+      <div class="avatar-row" style="margin-top:14px">
+        {% if m.avatar %}<img src="{{ m.avatar }}" class="avatar-preview" alt="Avatar">{% else %}<div class="avatar-preview avatar-ph">{{ name[:1]|upper }}</div>{% endif %}
+        <form method="post" action="{{ url_for('profile_avatar') }}" enctype="multipart/form-data" style="flex:1;min-width:220px">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input type="file" name="avatar" accept="image/png,image/jpeg,image/gif,image/webp" required style="display:block;margin-bottom:6px;color:var(--color-ink-mute);font-size:13px;font-family:var(--font)">
+          <div style="font-size:12px;color:var(--color-ink-mute);margin-bottom:12px">PNG, JPG, GIF or WebP, up to 600 KB. It is cropped to a square.</div>
+          <button type="submit" class="btn btn-secondary">{{ icon('upload', 14) }} Upload New Avatar</button>
+        </form>
+      </div>
+      {% if m.avatar %}
+      <form method="post" action="{{ url_for('profile_avatar') }}" style="margin-top:14px">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="remove" value="1">
+        <button type="submit" class="btn btn-danger btn-sm" data-confirm="Remove your avatar from QR codes?">{{ icon('trash', 13) }} Remove avatar</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="tab-pane {{ 'active' if tab == 'security' }}" id="tab-security">
+    <div class="card">
+      <div class="card-header" style="margin-bottom:18px">
+        <div class="card-title" style="display:flex;align-items:center;gap:8px">{{ icon('key', 18) }} {{ 'Change Password' if has_password else 'Set a Password' }}</div>
+        <div class="card-sub">{{ 'Update your account login credentials.' if has_password else 'You signed up with Google. Add a password to also log in with your email.' }}</div>
+      </div>
+      <form method="post" action="{{ url_for('profile_password') }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        {% if has_password %}
+        <div class="form-group"><label class="form-label">Current Password</label>
+          <input type="password" name="current_password" class="form-input" placeholder="Enter current password" required autocomplete="current-password"></div>
+        {% endif %}
+        <div class="form-group"><label class="form-label">New Password</label>
+          <input type="password" name="new_password" class="form-input" placeholder="At least 8 characters" required minlength="8" autocomplete="new-password"></div>
+        <div class="form-group"><label class="form-label">Confirm New Password</label>
+          <input type="password" name="confirm_password" class="form-input" placeholder="Re-enter new password" required autocomplete="new-password"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;padding:12px;margin-top:8px">{{ icon('lock', 15) }} Update Password</button>
+      </form>
+    </div>
+
+    <div class="card" id="passkeys">
+      <div class="card-header" style="margin-bottom:18px">
+        <div class="card-title" style="display:flex;align-items:center;gap:8px">{{ icon('key-round', 18) }} Passkeys</div>
+        <div class="card-sub">Sign in with your fingerprint, face or screen lock. No password or email code needed.</div>
+      </div>
+      {% if passkey_list %}
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+        {% for pk in passkey_list %}
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:var(--surface-page);border:1px solid var(--color-hairline);border-radius:12px;padding:12px 16px">
+          <div style="display:flex;align-items:center;gap:12px;min-width:0">
+            <div style="width:38px;height:38px;border-radius:50%;background:var(--color-primary-soft);color:var(--color-primary);display:flex;align-items:center;justify-content:center;flex-shrink:0">{{ icon('key-round', 18) }}</div>
+            <div style="min-width:0">
+              <div style="font-weight:600;font-size:14px;color:var(--color-ink);word-break:break-word">{{ pk.name }}</div>
+              <div style="font-size:12px;color:var(--color-ink-mute)">Added {{ pk.created_at|dt }}{% if pk.last_used_at %} &middot; Last used {{ pk.last_used_at|dt }}{% else %} &middot; Never used{% endif %}</div>
+            </div>
+          </div>
+          <form method="post" action="{{ url_for('profile_passkey_delete') }}" style="margin:0">
+            <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="id" value="{{ pk._id }}">
+            <button type="submit" class="btn btn-danger btn-sm" data-confirm="Remove the passkey &quot;{{ pk.name }}&quot;?">{{ icon('trash', 13) }} Remove</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div id="pkAlert" class="warn-box" style="display:none;margin-bottom:14px">{{ icon('info', 14) }}<div id="pkAlertText"></div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input type="text" id="pkName" class="form-input" placeholder="Name (e.g. My phone)" maxlength="40" style="flex:1;min-width:180px;max-width:280px">
+        <button type="button" class="btn btn-primary" id="pkAdd">{{ icon('plus', 14) }} Add a passkey</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane {{ 'active' if tab == 'social' }}" id="tab-social">
+    <div class="card">
+      <div class="card-header" style="margin-bottom:18px">
+        <div class="card-title" style="display:flex;align-items:center;gap:8px">{{ icon('link', 18) }} Google Sign-In</div>
+        <div class="card-sub">Enable or disable 1-click login with your Google account.</div>
+      </div>
+      {% if not google_enabled %}
+        <div class="warn-box">{{ icon('info', 14) }}<div>Google sign-in is not configured on this server (set <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code>).</div></div>
+      {% else %}
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;background:var(--surface-page);border:1px solid var(--color-hairline);border-radius:12px;padding:16px 20px">
+        <div style="display:flex;align-items:center;gap:14px;min-width:200px">
+          <div style="width:42px;height:42px;border-radius:50%;background:{{ '#dcfce7' if google_linked else '#f1f5f9' }};display:flex;align-items:center;justify-content:center;color:{{ '#16a34a' if google_linked else '#64748b' }}">{{ icon('check' if google_linked else 'unlink', 22) }}</div>
+          <div>
+            <div style="font-weight:600;font-size:14px;color:var(--color-ink)">{{ 'Linked' if google_linked else 'Not linked' }}</div>
+            <div style="font-size:13px;color:var(--color-ink-mute)">{{ 'You can log in via Google' if google_linked else 'Google login is turned off' }}</div>
+          </div>
+        </div>
+        <div style="flex-shrink:0">
+          {% if google_linked %}
+          <form method="post" action="{{ url_for('profile_google_unlink') }}" style="margin:0">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <button type="submit" class="btn btn-secondary" style="color:#dc2626;border-color:#fee2e2;background:#fef2f2" data-confirm="Turn off Google sign-in for this account?">Unlink Account</button>
+          </form>
+          {% else %}
+          <a href="{{ url_for('profile_google_link') }}" class="btn btn-primary">Link Google Account</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="fg-modal" id="editProfileModal" role="dialog" aria-modal="true">
+  <div class="fg-modal-box" style="max-width:480px">
+    <div class="fg-modal-head"><strong>Edit Personal Details</strong><button type="button" class="mobile-menu-btn" data-close aria-label="Close" style="color:var(--color-ink);display:flex">{{ icon('x', 16) }}</button></div>
+    <form class="fg-modal-body" method="post" action="{{ url_for('profile_details') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" name="full_name" value="{{ m.full_name or name }}" maxlength="60" required></div>
+      <div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" name="phone" value="{{ m.phone or '' }}" placeholder="10-digit mobile number" inputmode="numeric" maxlength="14"></div>
+      <div class="form-group"><label class="form-label">Support / Contact</label><input class="form-input" name="support_link" value="{{ m.support_link or '' }}" placeholder="https://t.me/yourname, email or @username" maxlength="200"></div>
+      <button type="submit" class="btn btn-primary" style="width:100%;padding:11px">Save Changes</button>
+    </form>
+  </div>
+</div>
+<div class="fg-modal" id="changeEmailModal" role="dialog" aria-modal="true">
+  <div class="fg-modal-box" style="max-width:480px">
+    <div class="fg-modal-head"><strong>Change Email</strong><button type="button" class="mobile-menu-btn" data-close aria-label="Close" style="color:var(--color-ink);display:flex">{{ icon('x', 16) }}</button></div>
+    <form class="fg-modal-body" method="post" action="{{ url_for('profile_email') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="form-group"><label class="form-label">New Email Address</label><input class="form-input" type="email" name="new_email" placeholder="you@example.com" required></div>
+      {% if has_password %}<div class="form-group"><label class="form-label">Current Password</label><input class="form-input" type="password" name="password" required autocomplete="current-password"></div>{% endif %}
+      <button type="submit" class="btn btn-primary" style="width:100%;padding:11px">Update Email</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var btns = document.querySelectorAll('.tab-btn');
+  btns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-tab');
+      btns.forEach(function (x) { x.classList.toggle('active', x === b); });
+      document.querySelectorAll('.tab-pane').forEach(function (p) { p.classList.toggle('active', p.id === 'tab-' + t); });
+      history.replaceState(null, '', '?tab=' + t);
+    });
+  });
+  document.addEventListener('click', function (e) {
+    var o = e.target.closest('[data-open]');
+    if (o) { document.getElementById(o.getAttribute('data-open')).classList.add('open'); }
+    if (e.target.closest('[data-close]') || e.target.classList.contains('fg-modal')) {
+      var m = e.target.closest('.fg-modal'); if (m) m.classList.remove('open');
+    }
+  });
+})();
+</script>
+<script>
+(function () {
+  var add = document.getElementById('pkAdd');
+  if (!add) return;
+  var csrf = {{ csrf|tojson }};
+  function b64uToBuf(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '=';
+    var bin = atob(s), buf = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i); return buf.buffer; }
+  function bufToB64u(buf) { var b = new Uint8Array(buf), s = ''; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function post(url, body) {
+    return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+      body: JSON.stringify(body || {}) }).then(function (r) { return r.json().catch(function () { return { ok: false, error: 'Unexpected server response.' }; }); });
+  }
+  function fail(msg) { document.getElementById('pkAlertText').textContent = msg; document.getElementById('pkAlert').style.display = 'flex'; }
+  add.addEventListener('click', function () {
+    document.getElementById('pkAlert').style.display = 'none';
+    if (!window.PublicKeyCredential || !navigator.credentials) { fail('This browser does not support passkeys.'); return; }
+    add.disabled = true;
+    post({{ url_for('passkey_register_begin')|tojson }}).then(function (res) {
+      if (!res.ok) throw new Error(res.error || 'Could not start.');
+      var o = res.options;
+      o.challenge = b64uToBuf(o.challenge); o.user.id = b64uToBuf(o.user.id);
+      o.excludeCredentials = (o.excludeCredentials || []).map(function (c) { return { type: c.type, id: b64uToBuf(c.id) }; });
+      return navigator.credentials.create({ publicKey: o });
+    }).then(function (cred) {
+      var r = cred.response;
+      return post({{ url_for('passkey_register_finish')|tojson }}, { id: cred.id, name: document.getElementById('pkName').value,
+        response: { clientDataJSON: bufToB64u(r.clientDataJSON), attestationObject: bufToB64u(r.attestationObject) } });
+    }).then(function (res) {
+      if (!res.ok) throw new Error(res.error || 'Could not add the passkey.');
+      window.location.href = {{ url_for('profile', tab='security')|tojson }};
+    }).catch(function (err) {
+      add.disabled = false;
+      if (err && err.name === 'NotAllowedError') fail('Passkey setup was cancelled or timed out.');
+      else if (err && err.name === 'InvalidStateError') fail('This device already has a passkey for your account.');
+      else fail((err && err.message) || 'Could not add the passkey.');
+    });
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "auth_base.html" %}
+{% block title %}{% if mode == 'verify_signup' %}Verify your email{% elif mode == 'login' %}Two-step verification{% elif mode == 'forgot' %}Forgot password{% elif mode == 'forgot_verify' %}Enter your code{% else %}New password{% endif %} - {{ brand }}{% endblock %}
+
+{% block header %}
+<h1 class="auth-form-title">{% if mode == 'verify_signup' %}Verify your email{% elif mode == 'login' %}Two-step verification{% elif mode == 'forgot' %}Forgot password?{% elif mode == 'forgot_verify' %}Enter your code{% else %}Set a new password{% endif %}</h1>
+<p class="auth-form-subtitle" style="word-break:break-word">
+  {% if mode == 'verify_signup' %}We sent a 6-digit code to <b style="color:#0f172a">{{ email }}</b>. Enter it below to activate your account.
+  {% elif mode == 'login' %}For your security, enter the 6-digit code we sent to <b style="color:#0f172a">{{ email }}</b>.
+  {% elif mode == 'forgot' %}Enter your account email and we will send you a 6-digit code to reset your password.
+  {% elif mode == 'forgot_verify' %}We sent a 6-digit code to <b style="color:#0f172a">{{ email }}</b> if an account exists for it.
+  {% else %}Choose a strong password of at least 8 characters.{% endif %}
+</p>
+{% endblock %}
+
+{% block card %}
+<form method="post" action="{{ action }}" autocomplete="off" id="otpMainForm">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if mode == 'forgot' %}
+    <div class="form-group"><label class="form-label" for="email">Email address</label>
+      <input id="email" name="email" type="email" class="form-input" placeholder="you@example.com" autocomplete="email" required autofocus></div>
+    <button class="btn-auth" type="submit">Send code &rarr;</button>
+
+  {% elif mode == 'reset' %}
+    <div class="form-group"><label class="form-label" for="pw">New password</label>
+      <input id="pw" name="password" type="password" class="form-input" placeholder="Min. 8 characters" minlength="8" autocomplete="new-password" required autofocus></div>
+    <div class="form-group"><label class="form-label" for="pw2">Confirm password</label>
+      <input id="pw2" name="confirm" type="password" class="form-input" placeholder="Repeat password" minlength="8" autocomplete="new-password" required></div>
+    <button class="btn-auth" type="submit">Update password &rarr;</button>
+
+  {% else %}
+    <div class="form-group"><label class="form-label" for="code">Verification code</label>
+      <input id="code" class="form-input otp-code" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+             autocomplete="one-time-code" placeholder="------" required autofocus></div>
+    {% if mode == 'login' %}
+      <div class="form-group" style="margin-bottom:20px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#334155;cursor:pointer">
+          <input type="checkbox" name="trust" value="1" checked style="width:16px;height:16px;cursor:pointer;accent-color:#2563eb">
+          Trust this browser for 30 days
+        </label>
+      </div>
+    {% endif %}
+    <button class="btn-auth" type="submit">Verify &rarr;</button>
+  {% endif %}
+</form>
+
+<p class="auth-switch">
+  {% if resend %}
+    Did not get the code?
+    <form method="post" action="{{ resend }}" style="display:inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="otp-linkbtn" type="submit">Resend code</button>
+    </form>
+    <span class="otp-hint">The code is valid for 10 minutes. Check your spam folder too.</span>
+  {% endif %}
+  <span style="display:block;margin-top:{{ '12px' if resend else '0' }}"><a href="{{ url_for('login') }}">Back to sign in</a></span>
+</p>
+{% endblock %}

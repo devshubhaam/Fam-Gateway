@@ -1,0 +1,241 @@
+{% extends "auth_base.html" %}
+{% set reg = (mode == 'register') %}
+{% block title %}{{ 'Register | Create Free Merchant Account' if reg else 'Login | Merchant & Developer Dashboard' }} - {{ brand }}{% endblock %}
+{% block desc %}{% if reg %}Create your free merchant account on {{ brand }}. Start accepting instant automated peer-to-peer UPI payments with 0% platform fees, 0s settlement, and developer APIs.{% else %}Sign in to your {{ brand }} merchant dashboard. Manage UPI payments, API keys and webhooks.{% endif %}{% endblock %}
+{% block robots %}index, follow{% endblock %}
+{% block bodyclass %}{{ 'auth-register' if reg else 'auth-login' }}{% endblock %}
+
+{% block panel %}
+{% if reg %}
+<div class="auth-left-heading">Get started<br><span>in minutes.</span></div>
+<p class="auth-left-desc">Create a free account and start accepting UPI payments through our API instantly.</p>
+<div class="auth-features">
+  {% for line in ["Free forever &mdash; zero platform fees", "Configure UPI Notifications in 30 seconds", "Instant API key &amp; live webhook alerts"] %}
+  <div class="auth-feature"><div class="auth-feature-dot"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>{{ line|safe }}</div>
+  {% endfor %}
+</div>
+{% else %}
+{{ super() }}
+{% endif %}
+{% endblock %}
+
+{% macro google_icon(size) %}<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 48 48"{% if size != 20 %} style="display:block;flex-shrink:0"{% endif %}>
+  <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+  <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+  <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+  <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+</svg>{% endmacro %}
+
+{% macro eye_toggle() %}
+<button type="button" data-eye aria-label="Show or hide password" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#64748b;padding:4px;display:flex">
+  <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+  <svg class="eye-off-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+</button>
+{% endmacro %}
+
+{% block header %}
+{% if reg %}
+<h1 class="auth-form-title">Register for {{ brand }}</h1>
+{% if google_enabled %}
+<a href="{{ url_for('google_start') }}" id="googleLoginBtn" class="btn-auth" style="background:#fff;color:#334155;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px;box-shadow:0 1px 2px rgba(0,0,0,0.05);text-decoration:none">
+  {{ google_icon(20) }}
+  Continue with Google
+</a>
+<div style="display:flex;align-items:center;margin-bottom:20px">
+  <div style="flex-grow:1;height:1px;background:#e2e8f0"></div>
+  <span style="padding:0 12px;font-size:13px;color:#64748b">or sign up with email</span>
+  <div style="flex-grow:1;height:1px;background:#e2e8f0"></div>
+</div>
+{% endif %}
+<p class="auth-form-subtitle">Free forever. No credit card required.</p>
+{% else %}
+<h1 class="auth-form-title">Sign In to {{ brand }}</h1>
+<p class="auth-form-subtitle">Sign in to your {{ brand }} account</p>
+{% endif %}
+{% endblock %}
+
+{% block card %}
+{% set f = form or {} %}
+{% if reg %}
+<form method="POST" action="{{ url_for('register') }}" id="registerForm">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="form-group">
+    <label class="form-label" for="name">Full Name</label>
+    <input type="text" id="name" name="name" class="form-input" placeholder="Aryan Gupta" required autofocus autocomplete="name" maxlength="60" value="{{ f.get('name', '') }}">
+  </div>
+  <div class="form-group">
+    <label class="form-label" for="email">Email address</label>
+    <input type="email" id="email" name="email" class="form-input" placeholder="you@example.com" required autocomplete="email" value="{{ f.get('email', '') }}">
+  </div>
+  <div class="form-group">
+    <label class="form-label" for="phone">Phone Number (WhatsApp)</label>
+    <div class="phone-input-wrapper">
+      <span class="phone-prefix">+91</span>
+      <input type="tel" id="phone" name="phone" placeholder="9876543210" pattern="[6-9][0-9]{9}" title="Please enter a valid 10-digit mobile number" required autocomplete="tel-national" inputmode="numeric" maxlength="10" value="{{ f.get('phone', '') }}">
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="form-label" for="password">Password</label>
+    <div style="position:relative">
+      <input type="password" id="password" name="password" class="form-input" placeholder="Min. 8 characters" required minlength="8" autocomplete="new-password" style="padding-right:40px">
+      {{ eye_toggle() }}
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="form-label" for="confirm_password">Confirm Password</label>
+    <div style="position:relative">
+      <input type="password" id="confirm_password" name="confirm_password" class="form-input" placeholder="Repeat password" required minlength="8" autocomplete="new-password" style="padding-right:40px">
+      {{ eye_toggle() }}
+    </div>
+  </div>
+  {% if turnstile_site_key %}
+  <div class="cf-turnstile" data-theme="light" data-sitekey="{{ turnstile_site_key }}" style="margin-bottom:14px;display:flex;justify-content:center"></div>
+  {% endif %}
+  <button type="submit" class="btn-auth" id="registerBtn">Create Account &rarr;</button>
+
+  <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Sign in</a></p>
+  <p class="terms-note">By creating an account, you agree to our <a href="{{ terms_url }}" target="_blank">Terms of Service</a> and <a href="{{ privacy_url }}" target="_blank">Privacy Policy</a>.</p>
+</form>
+{% else %}
+<div style="display:grid;grid-template-columns:{{ '1fr 1fr' if google_enabled else '1fr' }};gap:10px;margin-bottom:20px;width:100%;box-sizing:border-box">
+  {% if google_enabled %}
+  <a href="{{ url_for('google_start') }}" id="googleLoginBtn" class="btn-auth" style="background:#fff;color:#334155;border:1px solid #e2e8f0;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:44px;padding:0 10px;font-size:13.5px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.04);text-decoration:none;border-radius:12px;white-space:nowrap;box-sizing:border-box;transition:all 0.2s">
+    {{ google_icon(17) }}
+    <span>Google</span>
+  </a>
+  {% endif %}
+  <button id="passkeyLoginBtn" type="button" class="btn-auth" style="background:#fff;color:#0f172a;border:1px solid #e2e8f0;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:44px;padding:0 10px;font-size:13.5px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.04);cursor:pointer;font-family:inherit;border-radius:12px;white-space:nowrap;box-sizing:border-box;transition:all 0.2s">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0">
+      <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"></path>
+      <path d="M14 13.12c0 2.38 0 6.38-1 8.88"></path>
+      <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"></path>
+      <path d="M2 12a10 10 0 0 1 18-6"></path>
+      <path d="M2 16h.01"></path>
+      <path d="M21.8 16c.2-2 .131-5.354 0-6"></path>
+      <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"></path>
+      <path d="M8.65 22c.21-.66.45-1.32.57-2"></path>
+      <path d="M9 6.8a6 6 0 0 1 9 5.2v2"></path>
+    </svg>
+    <span>Passkey</span>
+  </button>
+</div>
+<div style="display:flex;align-items:center;margin-bottom:20px">
+  <div style="flex-grow:1;height:1px;background:#e2e8f0"></div>
+  <span style="padding:0 12px;font-size:13px;color:#64748b">or sign in with email</span>
+  <div style="flex-grow:1;height:1px;background:#e2e8f0"></div>
+</div>
+
+<form method="POST" action="{{ url_for('login') }}" id="loginForm">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="form-group">
+    <label class="form-label" for="email">Email address</label>
+    <input type="email" id="email" name="email" class="form-input" placeholder="you@example.com" required autofocus autocomplete="email" value="{{ f.get('email', '') }}">
+  </div>
+  <div class="form-group">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <label class="form-label" for="password" style="margin-bottom:0">Password</label>
+      <a href="{{ url_for('forgot') }}" style="font-size:12px;font-weight:500;color:#2563eb;text-decoration:none">Forgot password?</a>
+    </div>
+    <div style="position:relative">
+      <input type="password" id="password" name="password" class="form-input" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required autocomplete="current-password" style="padding-right:40px">
+      {{ eye_toggle() }}
+    </div>
+  </div>
+  <div class="form-group" style="margin-bottom:20px">
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#334155;cursor:pointer">
+      <input type="checkbox" name="remember" value="1" style="width:16px;height:16px;cursor:pointer;accent-color:#2563eb">
+      Keep me signed in for 7 days
+    </label>
+  </div>
+  {% if turnstile_site_key %}
+  <div class="cf-turnstile" data-theme="light" data-sitekey="{{ turnstile_site_key }}" style="margin-bottom:14px;display:flex;justify-content:center"></div>
+  {% endif %}
+  <button type="submit" class="btn-auth" id="loginBtn">Sign In &rarr;</button>
+</form>
+<p class="auth-switch">Don't have an account? <a href="{{ url_for('register') }}">Create one free</a></p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if turnstile_site_key %}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{% endif %}
+<script>
+(function () {
+  var alertBox = document.getElementById('authAlert');
+  function showError(msg) { alertBox.textContent = msg; alertBox.style.display = 'block'; }
+
+  document.querySelectorAll('[data-eye]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var input = btn.parentNode.querySelector('input');
+      var show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.querySelector('.eye-icon').style.display = show ? 'none' : '';
+      btn.querySelector('.eye-off-icon').style.display = show ? '' : 'none';
+    });
+  });
+
+  var form = document.getElementById('registerForm') || document.getElementById('loginForm');
+  var submit = document.getElementById('registerBtn') || document.getElementById('loginBtn');
+  if (form && submit) {
+    form.addEventListener('submit', function (e) {
+      var pw = form.querySelector('[name=password]'), cf = form.querySelector('[name=confirm_password]');
+      if (cf && pw.value !== cf.value) { e.preventDefault(); showError('The two passwords do not match.'); return; }
+      submit.disabled = true;
+      submit.innerHTML = '<span class="spinner"></span>' + (form.id === 'registerForm' ? 'Creating account...' : 'Signing in...');
+    });
+  }
+  window.addEventListener('pageshow', function (ev) {          // back button: unfreeze the button
+    if (ev.persisted && submit) { submit.disabled = false; submit.innerHTML = form.id === 'registerForm' ? 'Create Account &rarr;' : 'Sign In &rarr;'; }
+  });
+
+  {% if not reg %}
+  /* ---- Passkey sign-in ---- */
+  var pk = document.getElementById('passkeyLoginBtn');
+  if (!pk) return;
+  var csrf = {{ csrf|tojson }};
+  function b64uToBuf(s) {
+    s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '=';
+    var bin = atob(s), buf = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    return buf.buffer;
+  }
+  function bufToB64u(buf) {
+    var b = new Uint8Array(buf), s = '';
+    for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function post(url, body) {
+    return fetch(url, { method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(body || {}) })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: 'Unexpected server response.' }; }); });
+  }
+  var label = pk.querySelector('span');
+  pk.addEventListener('click', function () {
+    alertBox.style.display = 'none';
+    if (!window.PublicKeyCredential || !navigator.credentials) { showError('This browser does not support passkeys.'); return; }
+    pk.disabled = true; label.textContent = 'Waiting...';
+    function reset() { pk.disabled = false; label.textContent = 'Passkey'; }
+    post({{ url_for('passkey_login_begin')|tojson }}).then(function (opts) {
+      if (!opts.ok) throw new Error(opts.error || 'Could not start passkey sign-in.');
+      var o = opts.options;
+      return navigator.credentials.get({ publicKey: {
+        challenge: b64uToBuf(o.challenge), rpId: o.rpId, timeout: o.timeout,
+        userVerification: o.userVerification, allowCredentials: [] } });
+    }).then(function (cred) {
+      var r = cred.response, remember = form && form.querySelector('[name=remember]');
+      return post({{ url_for('passkey_login_finish')|tojson }}, {
+        id: cred.id, remember: !!(remember && remember.checked),
+        response: { clientDataJSON: bufToB64u(r.clientDataJSON), authenticatorData: bufToB64u(r.authenticatorData),
+                    signature: bufToB64u(r.signature), userHandle: r.userHandle ? bufToB64u(r.userHandle) : '' } });
+    }).then(function (res) {
+      if (!res.ok) throw new Error(res.error || 'Passkey sign-in failed.');
+      window.location.href = res.redirect;
+    }).catch(function (err) {
+      reset();
+      if (err && err.name === 'NotAllowedError') showError('Passkey sign-in was cancelled or timed out. Try again.');
+      else showError((err && err.message) || 'Passkey sign-in failed.');
+    });
+  });
+  {% endif %}
+})();
+</script>
+{% endblock %}
