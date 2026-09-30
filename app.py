@@ -23,6 +23,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import poller
+import scheduler
 import security
 import services
 import webhooks
@@ -1571,6 +1572,7 @@ def _loop(fn, interval, name):
 def start_workers():
     threading.Thread(target=_loop, args=(poller.poll_all, POLL_SECONDS, "poller"), daemon=True).start()
     threading.Thread(target=_loop, args=(webhooks.deliver_due, 3, "webhooks"), daemon=True).start()
+    threading.Thread(target=_loop, args=(scheduler.run_due, 300, "scheduler"), daemon=True).start()
     log.info("background workers started")
 
 
