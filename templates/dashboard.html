@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='design.css') }}?v=1">
 <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=1">
 <link rel="stylesheet" href="{{ url_for('static', filename='dash.css') }}?v=1">
+<style>.brand-logo{height:26px;width:auto;display:block;object-fit:contain}.stat-card-icon.img{background:none!important;box-shadow:none!important;width:48px;height:48px}.stat-card-icon.img img{width:100%;height:100%;object-fit:contain;display:block}</style>
 </head>
 <body>
 <div class="dashboard-layout">
@@ -33,10 +34,10 @@
       </div>
 
       <div class="stat-grid">
-        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Total orders</div><div class="stat-card-icon blue"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2"/></svg></div></div><div class="stat-card-value tnum">{{ stats.total }}</div></div>
-        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Paid</div><div class="stat-card-icon green"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div></div><div class="stat-card-value tnum">{{ stats.paid }}</div></div>
-        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Pending / expired</div><div class="stat-card-icon red"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div></div><div class="stat-card-value tnum">{{ stats.other }}</div></div>
-        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Total revenue</div><div class="stat-card-icon green"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12M6 8h12M6 13l8.5 8M6 13h3a4 4 0 0 0 0-10"/></svg></div></div><div class="stat-card-value tnum" style="color:#10b981">&#8377;{{ fmt(stats.revenue_paise) }}</div></div>
+        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Total orders</div><div class="stat-card-icon img"><img src="https://res.cloudinary.com/vyqo8row/image/upload/f_auto/q_auto/file_0000000029508211bd60ec7574bb7a0d.png" alt="Total orders"></div></div><div class="stat-card-value tnum">{{ stats.total }}</div></div>
+        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Paid</div><div class="stat-card-icon img"><img src="https://res.cloudinary.com/vyqo8row/image/upload/f_auto/q_auto/file_000000006d9c82109b49bcb426899a1a.png" alt="Paid"></div></div><div class="stat-card-value tnum">{{ stats.paid }}</div></div>
+        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Pending / expired</div><div class="stat-card-icon img"><img src="https://res.cloudinary.com/vyqo8row/image/upload/f_auto/q_auto/file_00000000b5308211b6cafcca302c0246.png" alt="Pending / expired"></div></div><div class="stat-card-value tnum">{{ stats.other }}</div></div>
+        <div class="stat-card"><div class="stat-card-top"><div class="stat-card-label">Total revenue</div><div class="stat-card-icon img"><img src="https://res.cloudinary.com/vyqo8row/image/upload/f_auto/q_auto/file_0000000000e4821081af7d3d55445ff4.png" alt="Total revenue"></div></div><div class="stat-card-value tnum" style="color:#10b981">&#8377;{{ fmt(stats.revenue_paise) }}</div></div>
       </div>
 
 
